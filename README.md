@@ -19,14 +19,33 @@ Obiettivo: prodotto vendibile a società che vogliono aprire un broker: **CRM/ba
 | Bridge/liquidity provider reale, A-book/B-book | ⬜ |
 | Pagamenti (PSP, crypto) | ⬜ |
 
-## Avvio
+## Provarla
+
+**Sul tuo computer** (serve Node.js 20 o più recente):
+```bash
+git clone https://github.com/mabaleemme2-eng/Claude.git && cd Claude
+git checkout claude/trading-platform-broker-crm-woonte
+npm install
+npm start            # compila e avvia: apri http://localhost:4000
+```
+- **Dal telefono** (stessa rete Wi-Fi): apri `http://<IP-del-computer>:4000`.
+- **Sviluppo** (ricarica automatica): `npm run dev` → http://localhost:5173.
+- **Pannello admin**: pulsante "Admin prezzi". In locale la chiave è `dev-admin`; in produzione viene generata (o la imposti con `ADMIN_KEY`).
+
+**Online con un link pubblico** (anche per il telefono), con Render:
+1. Crea un account su render.com e collega GitHub.
+2. *New + → Blueprint* → scegli questo repository e il branch → *Apply*. Legge `render.yaml` e fa tutto.
+3. Dopo qualche minuto ottieni un indirizzo `https://…onrender.com`. La chiave admin è in *Environment → ADMIN_KEY*.
+- Si può usare anche il `Dockerfile` su qualsiasi hosting (Fly.io, Railway, un VPS).
+- Il piano gratuito va in pausa dopo un po' di inattività (il primo caricamento è lento).
+
+**Installarla come app**: aprendo il link in Chrome/Edge compare "Installa" (programma sul computer); su iPhone Safari → Condividi → *Aggiungi a Home*; su Android Chrome → menu → *Installa app*.
+
+Ogni browser ha il proprio conto demo (id casuale salvato nel browser), quindi più persone possono provare in parallelo senza vedersi.
 
 ```bash
-npm install
-npm run dev          # server :4000 + terminale :5173
 npm test             # test del motore prezzi
 ```
-Apri http://localhost:5173. Chiave admin di sviluppo: `dev-admin` (variabile `ADMIN_KEY`).
 
 ## Prezzi gratuiti (nessuna chiave)
 

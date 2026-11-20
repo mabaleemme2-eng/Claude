@@ -13,6 +13,7 @@ export default function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [symbol, setSymbol] = useState('EURUSD');
   const [view, setView] = useState<'trade' | 'admin'>('trade');
+  const [mtab, setMtab] = useState<'markets' | 'chart' | 'order' | 'pos'>('chart');
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
   const acc = useAccount();
   const connected = useConnected();
@@ -47,14 +48,21 @@ export default function App() {
       {view === 'admin' ? (
         <AdminPanel instruments={instruments} />
       ) : (
-        <main className="trade">
-          <Watchlist instruments={instruments} selected={symbol} onSelect={setSymbol} />
+        <main className={`trade m-${mtab}`}>
+          <Watchlist instruments={instruments} selected={symbol} onSelect={(s) => { setSymbol(s); setMtab('chart'); }} />
           <section className="center">
             {inst && <Chart inst={inst} positions={(acc?.positions ?? []).filter((p) => p.symbol === symbol)} />}
             <Positions acc={acc} onSelect={setSymbol} />
           </section>
           {inst && <OrderPanel inst={inst} />}
         </main>
+      )}
+      {view === 'trade' && (
+        <nav className="mnav">
+          {([['markets', '☰', 'Mercati'], ['chart', '📈', 'Grafico'], ['order', '⚡', 'Ordine'], ['pos', '💼', `Posizioni${acc?.positions.length ? ` (${acc.positions.length})` : ''}`]] as const).map(([k, i, l]) => (
+            <button key={k} className={mtab === k ? 'on' : ''} onClick={() => setMtab(k)}><span>{i}</span>{l}</button>
+          ))}
+        </nav>
       )}
     </div>
   );

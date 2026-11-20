@@ -49,10 +49,32 @@ button.primary { background: var(--acc); border-color: var(--acc); color: #fff; 
 .form-grid { display: grid; grid-template-columns: 1fr 120px; gap: 8px 14px; align-items: center; } .form-grid label { color: var(--mute); }
 .card input[type=number] { width: 90px; } .card input[type=time] { width: 100px; } .mini td, .mini th { padding: 4px 8px; }
 td.days label { margin-right: 8px; white-space: nowrap; color: var(--mute); } td.days input { margin-right: 3px; }
-@media (max-width: 1000px) { .trade { grid-template-columns: 200px 1fr; } .order { display: none; } }
+
 
 .wl-search { padding: 8px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 2; }
 .wl-search input { width: 100%; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; } .chips button { padding: 2px 8px; font-size: 11px; border-radius: 10px; } .chips button.on { background: var(--acc); border-color: var(--acc); color: #fff; }
 .wl-head { top: 82px; z-index: 1; } .wl-group { cursor: pointer; user-select: none; }
 .src { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; } .src.live { background: var(--pos); } .src.sim { background: #f0a30a; }
+
+.mnav { display: none; }
+@media (max-width: 1000px) and (min-width: 801px) { .trade { grid-template-columns: 210px 1fr 240px; } }
+@media (max-width: 800px) {
+  .topbar { gap: 8px 12px; padding: 6px 10px; } .brand span { display: none; }
+  .metrics { gap: 14px; order: 3; flex-basis: 100%; } .metrics div:nth-child(n+3):not(:last-child) { display: none; }
+  .top-right { margin-left: auto; } .top-right select { max-width: 150px; }
+  .trade { display: flex; flex-direction: column; min-height: 0; }
+  .trade > * { display: none; flex: 1; min-height: 0; border: 0; }
+  .m-markets .watchlist, .m-chart .center, .m-pos .center, .m-order .order { display: block; }
+  .m-chart .center, .m-pos .center { display: flex; }
+  .m-chart .positions { display: none; }
+  .m-pos .chart-wrap { display: none; } .m-pos .positions { height: auto; flex: 1; border-top: 0; }
+  .chart-wrap { min-height: 0; } .ohlc { display: none; } .chart-bar { gap: 6px; padding: 6px; }
+  .chart-bar .seg button { padding: 4px 7px; }
+  .order { padding: 14px; } .order input, .order select { font-size: 16px; padding: 9px; } .quote-btns button { padding: 16px 6px; }
+  input, select { font-size: 16px; } /* evita lo zoom automatico su iPhone */
+  .admin { padding: 10px; } .tbl-wrap { -webkit-overflow-scrolling: touch; }
+  .mnav { display: flex; border-top: 1px solid var(--line); background: var(--panel); padding-bottom: env(safe-area-inset-bottom); }
+  .mnav button { flex: 1; border: 0; border-radius: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; font-size: 11px; color: var(--mute); }
+  .mnav button span { font-size: 18px; } .mnav button.on { color: #fff; background: #26304d; }
+}

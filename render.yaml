@@ -1,0 +1,13 @@
+# Deploy con un clic su Render: New + → Blueprint → collega questo repository.
+services:
+  - type: web
+    name: brokeros-terminal
+    runtime: docker
+    region: frankfurt
+    plan: free
+    healthCheckPath: /api/groups
+    envVars:
+      - key: ADMIN_KEY
+        generateValue: true   # la chiave del pannello admin: la trovi in Environment
+      - key: NODE_ENV
+        value: production

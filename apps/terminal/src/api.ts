@@ -31,12 +31,24 @@ export interface Account {
 export interface Candle { time: number; open: number; high: number; low: number; close: number }
 
 export const ADMIN_KEY_STORAGE = 'adminKey';
+
+/** Identificativo del conto demo di questo browser (nessun dato personale). */
+export const accountId = (): string => {
+  try {
+    let id = localStorage.getItem('accountId');
+    if (!id) {
+      id = Array.from({ length: 24 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
+      localStorage.setItem('accountId', id);
+    }
+    return id;
+  } catch { return 'demo'; }
+};
 export const adminKey = () => { try { return localStorage.getItem(ADMIN_KEY_STORAGE) ?? 'dev-admin'; } catch { return 'dev-admin'; } };
 
 export async function api<T>(path: string, init?: { method?: string; body?: unknown; admin?: boolean }): Promise<T> {
   const res = await fetch(path, {
     method: init?.method ?? 'GET',
-    headers: { 'content-type': 'application/json', ...(init?.admin ? { 'x-admin-key': adminKey() } : {}) },
+    headers: { 'content-type': 'application/json', 'x-account-id': accountId(), ...(init?.admin ? { 'x-admin-key': adminKey() } : {}) },
     body: init?.body === undefined ? undefined : JSON.stringify(init.body),
   });
   const data = await res.json();

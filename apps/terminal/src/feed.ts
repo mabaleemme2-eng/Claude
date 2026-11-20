@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { Account } from './api';
+import { accountId, type Account } from './api';
 
 export interface Tick { bid: number; ask: number; dir: 1 | -1 | 0 }
 type TickListener = (symbol: string, t: Tick, time: number) => void;
@@ -19,7 +19,7 @@ const notify = () => {
 };
 
 function connect() {
-  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?acc=${encodeURIComponent(accountId())}`);
   ws.onopen = () => { connected = true; notify(); };
   ws.onclose = () => { connected = false; notify(); setTimeout(connect, 1500); };
   ws.onmessage = (e) => {
