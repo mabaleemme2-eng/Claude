@@ -1,7 +1,8 @@
 import http from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { INSTRUMENTS, BY_SYMBOL } from './instruments.js';
-import { Market, SimulatedFeed } from './market.js';
+import { BINANCE_MAP, BinanceFeed, CompositeFeed, Market, SimulatedFeed } from './market.js';
+import { loadBinanceHistory } from './binanceHistory.js';
 import { CandleStore, TF, type TfKey } from './candles.js';
 import { PricingStore, applySpread, resolveSpreadRule, resolveSwap, sessionMultiplier, type GroupConfig } from './pricing.js';
 import { TradingEngine } from './trading.js';
@@ -11,8 +12,15 @@ const PORT = Number(process.env.PORT ?? 4000);
 const ADMIN_KEY = process.env.ADMIN_KEY ?? 'dev-admin';
 
 const pricing = new PricingStore();
-const market = new Market(new SimulatedFeed());
+/** USE_REAL_FEEDS=0 per tornare a tutto simulato (es. senza accesso a internet). */
+const REAL = process.env.USE_REAL_FEEDS !== '0';
+const realSymbols = new Set(REAL ? Object.keys(BINANCE_MAP) : []);
+const market = new Market(new CompositeFeed([
+  new SimulatedFeed(new Set(INSTRUMENTS.map((i) => i.symbol).filter((s) => !realSymbols.has(s)))),
+  ...(REAL ? [new BinanceFeed()] : []),
+]));
 const candles = new CandleStore();
+if (REAL) void loadBinanceHistory(candles).then((ok) => console.log(`[binance] storico reale caricato: ${ok.join(', ') || 'nessuno'}`));
 const engine = new TradingEngine(market, pricing);
 const demo = engine.createAccount('demo', 'Conto Demo', 'standard', 10000);
 

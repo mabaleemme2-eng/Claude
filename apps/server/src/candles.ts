@@ -56,6 +56,12 @@ export class CandleStore {
     }
   }
 
+  /** Sostituisce lo storico sintetico di una timeframe con barre reali. */
+  setSeries(symbol: string, tf: TfKey, bars: Candle[]) {
+    const rec = this.data.get(symbol);
+    if (rec && bars.length) rec[tf] = bars;
+  }
+
   get(symbol: string, tf: TfKey, limit = 500): Candle[] {
     const arr = this.data.get(symbol)?.[tf] ?? [];
     return arr.slice(-limit);

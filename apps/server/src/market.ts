@@ -1,4 +1,6 @@
 import { EventEmitter } from 'node:events';
+import WebSocket from 'ws';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { INSTRUMENTS, type Instrument } from './instruments.js';
 
 export interface RawTick {
@@ -28,11 +30,17 @@ export const gauss = () => {
 export class SimulatedFeed implements PriceFeed {
   private mids = new Map<string, number>();
   private timer?: NodeJS.Timeout;
+  private list: Instrument[];
+
+  /** `only`: simula solo questi simboli (gli altri arrivano da feed reali). */
+  constructor(only?: Set<string>) {
+    this.list = only ? INSTRUMENTS.filter((i) => only.has(i.symbol)) : INSTRUMENTS;
+  }
 
   start(onTick: (t: RawTick) => void) {
-    for (const i of INSTRUMENTS) this.mids.set(i.symbol, i.start);
+    for (const i of this.list) this.mids.set(i.symbol, i.start);
     this.timer = setInterval(() => {
-      for (const i of INSTRUMENTS) {
+      for (const i of this.list) {
         if (Math.random() > 0.7) continue;
         onTick(this.step(i));
       }
@@ -51,6 +59,60 @@ export class SimulatedFeed implements PriceFeed {
     const r = (v: number) => Number(v.toFixed(i.digits));
     return { symbol: i.symbol, bid: r(mid - half), ask: r(mid + half), time: Date.now() };
   }
+}
+
+/** Crypto reali da Binance (dati pubblici, nessuna chiave). USDT è trattato come USD. */
+export const BINANCE_MAP: Record<string, string> = {
+  BTCUSD: 'BTCUSDT', ETHUSD: 'ETHUSDT', SOLUSD: 'SOLUSDT', XRPUSD: 'XRPUSDT',
+};
+const BINANCE_WS = process.env.BINANCE_WS ?? 'wss://data-stream.binance.vision';
+export const BINANCE_REST = process.env.BINANCE_REST ?? 'https://data-api.binance.vision';
+
+export class BinanceFeed implements PriceFeed {
+  private ws?: WebSocket;
+  private stopped = false;
+  private onTick?: (t: RawTick) => void;
+  /** simboli per cui è arrivato almeno un tick reale */
+  readonly live = new Set<string>();
+
+  start(onTick: (t: RawTick) => void) {
+    this.onTick = onTick;
+    this.connect();
+  }
+
+  private connect() {
+    const reverse = new Map(Object.entries(BINANCE_MAP).map(([k, v]) => [v, k]));
+    const streams = Object.values(BINANCE_MAP).map((s) => `${s.toLowerCase()}@bookTicker`).join('/');
+    const proxy = process.env.HTTPS_PROXY ?? process.env.https_proxy;
+    this.ws = new WebSocket(`${BINANCE_WS}/stream?streams=${streams}`, proxy ? { agent: new HttpsProxyAgent(proxy) } : undefined);
+    this.ws.on('message', (d) => {
+      try {
+        const m = JSON.parse(String(d)).data;
+        const symbol = reverse.get(m?.s);
+        if (!symbol) return;
+        const inst = INSTRUMENTS.find((i) => i.symbol === symbol)!;
+        const r = (v: string) => Number(Number(v).toFixed(inst.digits));
+        this.live.add(symbol);
+        this.onTick?.({ symbol, bid: r(m.b), ask: r(m.a), time: Date.now() });
+      } catch { /* messaggio non valido */ }
+    });
+    this.ws.on('error', (e) => console.warn('[binance] errore:', e.message));
+    this.ws.on('close', () => {
+      if (!this.stopped) setTimeout(() => this.connect(), 2000);
+    });
+  }
+
+  stop() {
+    this.stopped = true;
+    this.ws?.close();
+  }
+}
+
+/** Unisce più feed: ogni strumento ha la sua fonte. */
+export class CompositeFeed implements PriceFeed {
+  constructor(private feeds: PriceFeed[]) {}
+  start(onTick: (t: RawTick) => void) { this.feeds.forEach((f) => f.start(onTick)); }
+  stop() { this.feeds.forEach((f) => f.stop()); }
 }
 
 /** Ultimo prezzo grezzo per strumento + evento 'tick'. */
