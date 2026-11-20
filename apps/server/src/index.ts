@@ -3,6 +3,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { INSTRUMENTS, BY_SYMBOL } from './instruments.js';
 import { BINANCE_MAP, BinanceFeed, CompositeFeed, Market, SimulatedFeed } from './market.js';
 import { loadBinanceHistory } from './binanceHistory.js';
+import { HL_SYMBOLS, HyperliquidFeed, loadHyperliquidHistory } from './hyperliquid.js';
 import { CandleStore, TF, type TfKey } from './candles.js';
 import { PricingStore, applySpread, resolveSpreadRule, resolveSwap, sessionMultiplier, type GroupConfig } from './pricing.js';
 import { TradingEngine } from './trading.js';
@@ -14,13 +15,18 @@ const ADMIN_KEY = process.env.ADMIN_KEY ?? 'dev-admin';
 const pricing = new PricingStore();
 /** USE_REAL_FEEDS=0 per tornare a tutto simulato (es. senza accesso a internet). */
 const REAL = process.env.USE_REAL_FEEDS !== '0';
-const realSymbols = new Set(REAL ? Object.keys(BINANCE_MAP) : []);
+const realSymbols = new Set(REAL ? [...Object.keys(BINANCE_MAP), ...HL_SYMBOLS] : []);
 const market = new Market(new CompositeFeed([
   new SimulatedFeed(new Set(INSTRUMENTS.map((i) => i.symbol).filter((s) => !realSymbols.has(s)))),
-  ...(REAL ? [new BinanceFeed()] : []),
+  ...(REAL ? [new BinanceFeed(), new HyperliquidFeed()] : []),
 ]));
 const candles = new CandleStore();
-if (REAL) void loadBinanceHistory(candles).then((ok) => console.log(`[binance] storico reale caricato: ${ok.join(', ') || 'nessuno'}`));
+if (REAL) {
+  void loadBinanceHistory(candles).then((ok) => console.log(`[binance] storico reale: ${ok.join(', ') || 'nessuno'}`));
+  void loadHyperliquidHistory(candles).then((ok) => console.log(`[hyperliquid] storico reale: ${ok.join(', ') || 'nessuno'}`));
+  console.log(`Prezzi LIVE: crypto (Binance) + forex/indici/metalli/azioni (Hyperliquid). Ancora simulati: ${
+    INSTRUMENTS.map((i) => i.symbol).filter((x) => !realSymbols.has(x)).join(', ')}`);
+}
 const engine = new TradingEngine(market, pricing);
 const demo = engine.createAccount('demo', 'Conto Demo', 'standard', 10000);
 

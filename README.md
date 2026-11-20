@@ -11,8 +11,8 @@ Obiettivo: prodotto vendibile a società che vogliono aprire un broker: **CRM/ba
 | Motore swap: pip/%/USD, triple swap, markup broker, conto islamico, rollover | ✅ + test |
 | Motore di trading: margine, leva, P&L, SL/TP, pendenti, stop-out | ✅ (in memoria) |
 | Pannello admin prezzi con anteprima grezzo vs cliente | ✅ |
-| Feed prezzi crypto (BTC, ETH, SOL, XRP) | ✅ reali da Binance (WebSocket + storico, nessuna chiave) |
-| Feed prezzi forex, indici, materie prime, azioni | 🟡 simulato: serve una fonte (vedi sotto) |
+| Prezzi LIVE gratuiti: crypto (Binance) e forex EUR/GBP/JPY + crociere, indici, oro, argento, petrolio, azioni (Hyperliquid) | ✅ WebSocket + storico reale, nessuna chiave |
+| Ancora simulati: AUDUSD, USDCAD, USDCHF, NZDUSD, GER40, UK100 | 🟡 nessuna fonte gratuita live trovata |
 | CRM (clienti, KYC, depositi/prelievi, documenti, IB, ticket, ruoli) | ⬜ prossimo |
 | Database Postgres, multi-tenant, autenticazione/RBAC | ⬜ prossimo |
 | Bridge/liquidity provider reale, A-book/B-book | ⬜ |
@@ -29,9 +29,11 @@ Apri http://localhost:5173. Chiave admin di sviluppo: `dev-admin` (variabile `AD
 
 ## Prezzi gratuiti
 
-- **Crypto**: Binance market data pubblici (`data-stream.binance.vision`, `data-api.binance.vision`). USDT trattato come USD. `USE_REAL_FEEDS=0` torna al simulato.
-- **Forex/indici/materie prime/azioni**: nessuna fonte davvero gratuita, in tempo reale e ridistribuibile. Opzioni: Twelve Data e Finnhub (piano gratuito con chiave e limiti), oppure un feed a pagamento. Yahoo Finance non ufficiale ha risposto 429 dall'ambiente cloud.
-- I feed gratuiti sono adatti a demo e sviluppo: per vendere ai clienti serve una licenza di ridistribuzione.
+- **Crypto**: Binance market data pubblici (`data-stream.binance.vision`, `data-api.binance.vision`). USDT trattato come USD.
+- **Forex, indici, oro/argento/petrolio, azioni**: Hyperliquid, mercati HIP-3 del dex `xyz` (`api.hyperliquid.xyz`). Sono prezzi di *perpetual* molto liquidi e allineati allo spot (verificato: oro 3.622 vs PAXG 3.614, EUR 1,0977 vs EURUSDT 1,0979), ma non il feed interbancario. Gli altri dex di Hyperliquid hanno volume zero e prezzi vecchi: non usati. EURGBP/EURJPY/GBPJPY sono calcolati dalle componenti.
+- **Ancora simulati**: AUDUSD, USDCAD, USDCHF, NZDUSD, GER40, UK100.
+- `USE_REAL_FEEDS=0` torna a tutto simulato. Yahoo Finance non ufficiale risponde 429 dal cloud: scartato.
+- I feed gratuiti vanno bene per demo e sviluppo: per vendere ai clienti serve una licenza di ridistribuzione.
 
 ## Struttura
 

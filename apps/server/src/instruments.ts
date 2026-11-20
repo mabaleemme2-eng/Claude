@@ -78,6 +78,7 @@ export const INSTRUMENTS: Instrument[] = [
   other('US500', 'S&P 500', 'index', 5280, 2, 1, 1, [0.1, 200, 0.1], 3e-5, 0.6, pct(-5.5, 2.0)),
   other('US100', 'Nasdaq 100', 'index', 18350, 2, 1, 1, [0.1, 200, 0.1], 4e-5, 1.5, pct(-5.5, 2.0)),
   other('GER40', 'DAX 40', 'index', 18120, 2, 1, 1, [0.1, 200, 0.1], 3.5e-5, 1.2, pct(-5.0, 1.8), 'EUR'),
+  other('JP225', 'Nikkei 225', 'index', 57500, 1, 1, 1, [0.1, 200, 0.1], 3e-5, 8, pct(-5.0, 1.8), 'JPY'),
   other('UK100', 'FTSE 100', 'index', 8240, 2, 1, 1, [0.1, 200, 0.1], 3e-5, 1.5, pct(-5.0, 1.8), 'GBP'),
 
   other('XAUUSD', 'Oro', 'commodity', 2385, 2, 0.1, 100, [0.01, 50, 0.01], 4e-5, 2.5, { mode: 'pips', long: -38, short: 18, tripleDay: 3 }),

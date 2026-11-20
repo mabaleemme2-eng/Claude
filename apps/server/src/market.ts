@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import WebSocket from 'ws';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import { proxyAgent } from './httpJson.js';
 import { INSTRUMENTS, type Instrument } from './instruments.js';
 
 export interface RawTick {
@@ -83,8 +83,7 @@ export class BinanceFeed implements PriceFeed {
   private connect() {
     const reverse = new Map(Object.entries(BINANCE_MAP).map(([k, v]) => [v, k]));
     const streams = Object.values(BINANCE_MAP).map((s) => `${s.toLowerCase()}@bookTicker`).join('/');
-    const proxy = process.env.HTTPS_PROXY ?? process.env.https_proxy;
-    this.ws = new WebSocket(`${BINANCE_WS}/stream?streams=${streams}`, proxy ? { agent: new HttpsProxyAgent(proxy) } : undefined);
+    this.ws = new WebSocket(`${BINANCE_WS}/stream?streams=${streams}`, proxyAgent ? { agent: proxyAgent } : undefined);
     this.ws.on('message', (d) => {
       try {
         const m = JSON.parse(String(d)).data;
