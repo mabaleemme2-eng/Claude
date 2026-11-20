@@ -5,6 +5,7 @@ import {
 } from 'lightweight-charts';
 import { api, type Candle, type Instrument, type Position } from '../api';
 import { onTick } from '../feed';
+import { instName, t, useLang } from '../i18n';
 
 const TFS = ['M1', 'M5', 'M15', 'H1', 'H4', 'D1'] as const;
 const TF_SEC: Record<string, number> = { M1: 60, M5: 300, M15: 900, H1: 3600, H4: 14400, D1: 86400 };
@@ -39,6 +40,7 @@ const bollinger = (c: Candle[], n = 20, m = 2): { up: Pt[]; low: Pt[] } => {
 };
 
 export default function Chart({ inst, positions }: { inst: Instrument; positions: Position[] }) {
+  useLang();
   const box = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi>();
   const mainRef = useRef<ISeriesApi<SeriesType>>();
@@ -152,10 +154,10 @@ export default function Chart({ inst, positions }: { inst: Instrument; positions
   return (
     <div className="chart-wrap">
       <div className="chart-bar">
-        <b className="chart-title">{inst.symbol} <small>{inst.name}</small></b>
+        <b className="chart-title">{inst.symbol} <small>{instName(inst.symbol, inst.name)}</small></b>
         <div className="seg">{TFS.map((x) => <button key={x} className={x === tf ? 'on' : ''} onClick={() => setTf(x)}>{x}</button>)}</div>
         <div className="seg">
-          {(['candles', 'line', 'area'] as ChartType[]).map((x) => <button key={x} className={x === type ? 'on' : ''} onClick={() => setType(x)}>{x === 'candles' ? 'Candles' : x === 'line' ? 'Line' : 'Area'}</button>)}
+          {(['candles', 'line', 'area'] as ChartType[]).map((x) => <button key={x} className={x === type ? 'on' : ''} onClick={() => setType(x)}>{t(x === 'candles' ? 'candles' : x === 'line' ? 'line' : 'area')}</button>)}
         </div>
         <div className="seg">
           <button className={ind.sma ? 'on' : ''} onClick={() => setInd({ ...ind, sma: !ind.sma })}>SMA 20</button>

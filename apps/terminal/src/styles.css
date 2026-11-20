@@ -78,3 +78,4 @@ td.days label { margin-right: 8px; white-space: nowrap; color: var(--mute); } td
   .mnav button { flex: 1; border: 0; border-radius: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; font-size: 11px; color: var(--mute); }
   .mnav button span { font-size: 18px; } .mnav button.on { color: #fff; background: #26304d; }
 }
+.lang { max-width: 118px; }

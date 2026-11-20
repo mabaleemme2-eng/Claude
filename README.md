@@ -8,6 +8,7 @@ Goal: a product to sell to companies that want to open a broker: **CRM/back offi
 |---|---|
 | Web terminal (candles/line/area charts, SMA/EMA/Bollinger, market/limit/stop orders, SL/TP, positions, history) | ✅ working |
 | Mobile layout + installable app (PWA) | ✅ working |
+| Multi-language UI: English (base), Spanish, Italian, French, Portuguese — language menu in the top bar | ✅ working |
 | Pricing engine: spreads by group/class/symbol/client, widening sessions, commissions | ✅ + tests |
 | Swap engine: pips/%/USD, triple swap, broker markup, Islamic accounts, rollover | ✅ + tests |
 | Trading engine: margin, leverage, P&L, SL/TP, pending orders, stop-out | ✅ (in memory) |
@@ -47,6 +48,12 @@ Every browser gets its own demo account (random id stored in the browser), so se
 ```bash
 npm test             # pricing engine tests
 ```
+
+## Languages
+
+English is the base language. The menu in the top bar switches between English, Español, Italiano, Français and Português; the choice is remembered in the browser, and the first visit uses the browser's language when supported.
+
+All texts live in `apps/terminal/src/i18n.ts`. To add a language: add it to `LANGS` and `LOCALES`, then create a dictionary with the same keys (the TypeScript compiler fails if a key is missing). Server error messages stay in English and are translated by the client (`tErr`). Default group names and commodity names are translated; custom group names you create keep the text you typed.
 
 ## Free prices (no keys)
 

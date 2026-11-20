@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { api, setAccountFromServer, type Instrument } from './apiHelpers';
 import { useAccount, useConnected } from './feed';
+import { LANGS, groupName, locale, setLang, t, useLang } from './i18n';
 import Watchlist from './components/Watchlist';
 import Chart from './components/Chart';
 import OrderPanel from './components/OrderPanel';
 import Positions from './components/Positions';
 import AdminPanel from './components/AdminPanel';
 
-const fmt = (v: number | null | undefined, d = 2) => (v === null || v === undefined ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
+const fmt = (v: number | null | undefined, d = 2) => (v === null || v === undefined ? '—' : v.toLocaleString(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }));
 
 export default function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
@@ -15,6 +16,7 @@ export default function App() {
   const [view, setView] = useState<'trade' | 'admin'>('trade');
   const [mtab, setMtab] = useState<'markets' | 'chart' | 'order' | 'pos'>('chart');
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
+  const lang = useLang();
   const acc = useAccount();
   const connected = useConnected();
 
@@ -30,19 +32,22 @@ export default function App() {
       <header className="topbar">
         <div className="brand">◆ BrokerOS <span>Terminal</span></div>
         <div className="metrics">
-          <div><label>Balance</label><b>{fmt(acc?.balance)}</b></div>
-          <div><label>Equity</label><b>{fmt(acc?.equity)}</b></div>
-          <div><label>Margin</label><b>{fmt(acc?.margin)}</b></div>
-          <div><label>Free margin</label><b>{fmt(acc?.freeMargin)}</b></div>
-          <div><label>Level</label><b className={acc?.marginLevel != null && acc.marginLevel < 150 ? 'neg' : ''}>{acc?.marginLevel != null ? fmt(acc.marginLevel, 0) + '%' : '—'}</b></div>
-          <div><label>P&amp;L</label><b className={(acc?.floating ?? 0) >= 0 ? 'pos' : 'neg'}>{fmt(acc?.floating)}</b></div>
+          <div><label>{t('balance')}</label><b>{fmt(acc?.balance)}</b></div>
+          <div><label>{t('equity')}</label><b>{fmt(acc?.equity)}</b></div>
+          <div><label>{t('margin')}</label><b>{fmt(acc?.margin)}</b></div>
+          <div><label>{t('freeMargin')}</label><b>{fmt(acc?.freeMargin)}</b></div>
+          <div><label>{t('level')}</label><b className={acc?.marginLevel != null && acc.marginLevel < 150 ? 'neg' : ''}>{acc?.marginLevel != null ? fmt(acc.marginLevel, 0) + '%' : '—'}</b></div>
+          <div><label>{t('pnl')}</label><b className={(acc?.floating ?? 0) >= 0 ? 'pos' : 'neg'}>{fmt(acc?.floating)}</b></div>
         </div>
         <div className="top-right">
-          <select value={acc?.groupId ?? ''} onChange={async (e) => setAccountFromServer(await api('/api/account/group', { method: 'POST', body: { groupId: e.target.value } }))} title="Account group (spread/swap)">
-            {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          <select value={acc?.groupId ?? ''} onChange={async (e) => setAccountFromServer(await api('/api/account/group', { method: 'POST', body: { groupId: e.target.value } }))} title={t('accountGroup')}>
+            {groups.map((g) => <option key={g.id} value={g.id}>{groupName(g.id, g.name)}</option>)}
           </select>
-          <button className={view === 'admin' ? 'tab on' : 'tab'} onClick={() => setView(view === 'admin' ? 'trade' : 'admin')}>⚙ Pricing admin</button>
-          <span className={connected ? 'dot on' : 'dot'} title={connected ? 'Connected' : 'Disconnected'} />
+          <button className={view === 'admin' ? 'tab on' : 'tab'} onClick={() => setView(view === 'admin' ? 'trade' : 'admin')}>{t('pricingAdmin')}</button>
+          <select className="lang" value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} title={t('language')} aria-label={t('language')}>
+            {LANGS.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+          </select>
+          <span className={connected ? 'dot on' : 'dot'} title={connected ? t('connected') : t('disconnected')} />
         </div>
       </header>
       {view === 'admin' ? (
@@ -59,7 +64,7 @@ export default function App() {
       )}
       {view === 'trade' && (
         <nav className="mnav">
-          {([['markets', '☰', 'Markets'], ['chart', '📈', 'Chart'], ['order', '⚡', 'Order'], ['pos', '💼', `Positions${acc?.positions.length ? ` (${acc.positions.length})` : ''}`]] as const).map(([k, i, l]) => (
+          {([['markets', '☰', t('navMarkets')], ['chart', '📈', t('navChart')], ['order', '⚡', t('navOrder')], ['pos', '💼', `${t('navPositions')}${acc?.positions.length ? ` (${acc.positions.length})` : ''}`]] as const).map(([k, i, l]) => (
             <button key={k} className={mtab === k ? 'on' : ''} onClick={() => setMtab(k)}><span>{i}</span>{l}</button>
           ))}
         </nav>
