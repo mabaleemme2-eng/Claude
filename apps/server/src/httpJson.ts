@@ -4,7 +4,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 const proxy = process.env.HTTPS_PROXY ?? process.env.https_proxy;
 export const proxyAgent = proxy ? new HttpsProxyAgent(proxy) : undefined;
 
-/** GET/POST JSON che rispetta il proxy (il fetch nativo di Node lo ignora). */
+/** GET/POST JSON that honours the proxy (Node's native fetch ignores it). */
 export function requestJson<T>(url: string, body?: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
     const payload = body === undefined ? undefined : JSON.stringify(body);
@@ -16,7 +16,7 @@ export function requestJson<T>(url: string, body?: unknown): Promise<T> {
       res.on('data', (c) => (text += c));
       res.on('end', () => {
         if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
-        try { resolve(JSON.parse(text) as T); } catch { reject(new Error('risposta non JSON')); }
+        try { resolve(JSON.parse(text) as T); } catch { reject(new Error('response is not JSON')); }
       });
     });
     req.setTimeout(20000, () => req.destroy(new Error('timeout')));

@@ -5,10 +5,10 @@ import { requestJson } from './httpJson.js';
 import { BINANCE_REST } from './market.js';
 
 /**
- * CATALOGO STRUMENTI
- * Parte dalla lista base (simulata) e la arricchisce all'avvio con ciò che le fonti gratuite quotano
- * davvero: crypto da Binance, indici/metalli/energia/agricoli/azioni da Hyperliquid, forex da Kraken.
- * Se uno strumento esiste già mantiene le sue impostazioni (lotti, swap) e cambia solo la fonte.
+ * INSTRUMENT CATALOG
+ * Starts from the base (simulated) list and, at startup, enriches it with what the free sources really
+ * quote: crypto from Binance, indices/metals/energy/agriculture/stocks from Hyperliquid, forex from Kraken.
+ * If an instrument already exists it keeps its settings (lots, swap) and only its source changes.
  */
 
 const decimals = (s: string) => (s.includes('.') ? (s.replace(/0+$/, '').split('.')[1]?.length ?? 0) : 0);
@@ -24,7 +24,7 @@ function make(p: Partial<Instrument> & Pick<Instrument, 'symbol' | 'name' | 'cls
   } as Instrument;
 }
 
-/** Se lo strumento esiste già: conserva le sue impostazioni e aggiorna solo la fonte. */
+/** If the instrument already exists: keep its settings and only update the source. */
 function upsert(list: Instrument[], fresh: Instrument): Instrument {
   const old = BY_SYMBOL.get(fresh.symbol);
   return old ? { ...old, source: fresh.source, feedId: fresh.feedId } : fresh;
@@ -61,14 +61,14 @@ const HL_ALIAS: Record<string, string> = {
   NATGAS: 'NGAS', SP500: 'US500', XYZ100: 'US100',
 };
 const HL_NAMES: Record<string, string> = {
-  XAUUSD: 'Oro', XAGUSD: 'Argento', XPTUSD: 'Platino', XPDUSD: 'Palladio', COPPER: 'Rame', USOIL: 'Petrolio WTI',
-  UKOIL: 'Petrolio Brent', NGAS: 'Gas naturale', TTF: 'Gas TTF', URANIUM: 'Uranio', CORN: 'Mais', WHEAT: 'Grano',
-  ALUMINIUM: 'Alluminio', US500: 'S&P 500', US100: 'US Tech 100 (XYZ100)', JP225: 'Nikkei 225', KR200: 'KOSPI 200',
+  XAUUSD: 'Gold', XAGUSD: 'Silver', XPTUSD: 'Platinum', XPDUSD: 'Palladium', COPPER: 'Copper', USOIL: 'WTI Crude Oil',
+  UKOIL: 'Brent Crude Oil', NGAS: 'Natural Gas', TTF: 'TTF Gas', URANIUM: 'Uranium', CORN: 'Corn', WHEAT: 'Wheat',
+  ALUMINIUM: 'Aluminium', US500: 'S&P 500', US100: 'US Tech 100 (XYZ100)', JP225: 'Nikkei 225', KR200: 'KOSPI 200',
   NIFTY: 'Nifty 50', IBOV: 'Ibovespa',
 };
 const HL_INDEX = new Set(['SP500', 'XYZ100', 'JP225', 'KR200', 'NIFTY', 'IBOV']);
 const HL_COMMODITY = new Set(['GOLD', 'SILVER', 'PLATINUM', 'PALLADIUM', 'COPPER', 'CL', 'BRENTOIL', 'NATGAS', 'TTF', 'URANIUM', 'CORN', 'WHEAT', 'ALUMINIUM']);
-/** niente forex (arriva da Kraken), né indici di volatilità o strumenti non standard */
+/** no forex (comes from Kraken), no volatility indices or non-standard instruments */
 const HL_SKIP = new Set(['EUR', 'GBP', 'JPY', 'KRW', 'DXY', 'VIX', 'VOL', 'H100', 'PURRDAT', 'BIRD', 'DRAM', 'MINIMAX', 'ZHIPU']);
 const CONTRACT: Record<string, number> = { XAUUSD: 100, XAGUSD: 5000, XPTUSD: 50, XPDUSD: 100, COPPER: 25000, USOIL: 1000, UKOIL: 1000, NGAS: 10000, TTF: 1000, URANIUM: 1000, CORN: 5000, WHEAT: 5000, ALUMINIUM: 25 };
 
@@ -94,7 +94,7 @@ async function hyperliquidInstruments(): Promise<Instrument[]> {
 }
 
 // ───────────── forex (Kraken + incroci) ─────────────
-/** Tassi di riferimento annui indicativi (%), da aggiornare dal pannello admin: base per gli swap dei cambi nuovi. */
+/** Indicative annual reference rates (%), to be updated from the admin panel: the basis for new pairs' swaps. */
 const RATES: Record<string, number> = { USD: 4.5, EUR: 2.5, GBP: 4.5, AUD: 4.0, CAD: 3.0, CHF: 0.5, JPY: 0.25 };
 
 function forexInstruments(): Instrument[] {
@@ -102,7 +102,7 @@ function forexInstruments(): Instrument[] {
     const jpy = p.quote === 'JPY';
     const hl = HL_FX[p.symbol];
     const direct = KRAKEN_DIRECT.includes(p.symbol);
-    const fee = 1; // maggiorazione fissa del broker in punti % annui
+    const fee = 1; // fixed broker markup in % points per year
     const diff = RATES[p.base] - RATES[p.quote];
     return upsert([], make({
       symbol: p.symbol, name: `${p.base}/${p.quote}`, cls: 'forex', digits: jpy ? 3 : 5, pip: jpy ? 0.01 : 0.0001,
@@ -123,8 +123,8 @@ export async function buildCatalog(): Promise<void> {
       registerInstruments(list);
       report.push(`${name} ${list.length}`);
     } catch (e) {
-      console.warn(`[catalogo] ${name} non raggiungibile, strumenti simulati:`, (e as Error).message);
+      console.warn(`[catalog] ${name} unreachable, instruments stay simulated:`, (e as Error).message);
     }
   }
-  console.log(`[catalogo] ${report.join(' · ')}`);
+  console.log(`[catalog] ${report.join(' · ')}`);
 }

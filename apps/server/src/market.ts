@@ -12,8 +12,8 @@ export interface RawTick {
 }
 
 /**
- * Interfaccia da implementare per agganciare un provider reale
- * (FIX / WebSocket, bridge MT5…). Il resto della piattaforma consuma solo RawTick.
+ * Interface to implement in order to plug in a real provider
+ * (FIX / WebSocket, MT5 bridge…). The rest of the platform only consumes RawTick.
  */
 export interface PriceFeed {
   start(onTick: (t: RawTick) => void): void;
@@ -26,7 +26,7 @@ export const gauss = () => {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 };
 
-/** Feed simulato per gli strumenti senza fonte live (source = 'sim'). */
+/** Simulated feed for instruments without a live source (source = 'sim'). */
 export class SimulatedFeed implements PriceFeed {
   private mids = new Map<string, number>();
   private timer?: NodeJS.Timeout;
@@ -56,7 +56,7 @@ export class SimulatedFeed implements PriceFeed {
 export const BINANCE_WS = process.env.BINANCE_WS ?? 'wss://data-stream.binance.vision';
 export const BINANCE_REST = process.env.BINANCE_REST ?? 'https://data-api.binance.vision';
 
-/** Crypto spot da Binance (stream bookTicker, dati pubblici senza chiave). USDT trattato come USD. */
+/** Spot crypto from Binance (bookTicker stream, public data, no key). USDT is treated as USD. */
 export class BinanceFeed implements PriceFeed {
   private ws?: WebSocket;
   private stopped = false;
@@ -79,16 +79,16 @@ export class BinanceFeed implements PriceFeed {
         const m = JSON.parse(String(d));
         const symbol = map.get(m.s);
         if (symbol) this.onTick?.({ symbol, bid: Number(m.b), ask: Number(m.a), time: Date.now() });
-      } catch { /* messaggio non valido */ }
+      } catch { /* invalid message */ }
     });
-    this.ws.on('error', (e) => console.warn('[binance] errore:', e.message));
+    this.ws.on('error', (e) => console.warn('[binance] error:', e.message));
     this.ws.on('close', () => { if (!this.stopped) setTimeout(() => this.connect(), 2000); });
   }
 
   stop() { this.stopped = true; this.ws?.close(); }
 }
 
-/** Unisce più feed e aggiunge i cambi incrociati calcolati dai cambi con il dollaro. */
+/** Merges several feeds and adds the cross rates calculated from the USD pairs. */
 export class CompositeFeed implements PriceFeed {
   constructor(private feeds: PriceFeed[]) {}
   start(onTick: (t: RawTick) => void) {
@@ -101,7 +101,7 @@ export class CompositeFeed implements PriceFeed {
 
 const MIN_INTERVAL_MS = 150;
 
-/** Ultimo prezzo grezzo per strumento + evento 'tick' (al massimo uno ogni 150 ms per simbolo). */
+/** Latest raw price per instrument + 'tick' event (at most one every 150 ms per symbol). */
 export class Market extends EventEmitter {
   private last = new Map<string, RawTick>();
   private pending = new Set<string>();
@@ -114,7 +114,7 @@ export class Market extends EventEmitter {
   private ingest(t: RawTick) {
     const inst = BY_SYMBOL.get(t.symbol);
     if (!inst || !(t.bid > 0) || !(t.ask >= t.bid)) return;
-    // quotazioni forex con spread assurdo = mercato illiquido: meglio nessun aggiornamento che un prezzo falso
+    // forex quotes with an absurd spread = illiquid market: better no update than a false price
     if (inst.cls === 'forex' && (t.ask - t.bid) / t.bid > 0.003) return;
     const r = (v: number) => Number(v.toFixed(inst.digits));
     this.last.set(t.symbol, { ...t, bid: r(t.bid), ask: r(t.ask) });
@@ -133,7 +133,7 @@ export class Market extends EventEmitter {
     return t ? (t.bid + t.ask) / 2 : undefined;
   }
 
-  /** Quanti USD vale 1 unità di `ccy` (EUR→USD usa EURUSD, CHF→USD usa 1/USDCHF…). */
+  /** How many USD one unit of `ccy` is worth (EUR→USD uses EURUSD, CHF→USD uses 1/USDCHF…). */
   toUsd(ccy: string): number {
     if (ccy === 'USD') return 1;
     const direct = this.mid(`${ccy}USD`);

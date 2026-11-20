@@ -1,21 +1,21 @@
 import { BY_SYMBOL } from './instruments.js';
 import type { RawTick } from './market.js';
 
-/** Ordine convenzionale delle valute nei nomi delle coppie (EUR davanti a tutte, JPY in fondo). */
+/** Conventional currency order in pair names (EUR first, JPY last). */
 export const FX_ORDER = ['EUR', 'GBP', 'AUD', 'NZD', 'USD', 'CAD', 'CHF', 'JPY'];
-/** Valute con una quotazione live disponibile (NZD manca: nessuna fonte gratuita). */
+/** Currencies with a live quote available (NZD is missing: no free source). */
 export const FX_LIVE = ['EUR', 'GBP', 'AUD', 'USD', 'CAD', 'CHF', 'JPY'];
 /**
- * Coppie quotate direttamente da Kraken solo se liquide. EUR/JPY, EUR/AUD, EUR/CAD e AUD/JPY su Kraken
- * hanno spread enormi e quasi nessun aggiornamento: si calcolano dai cambi con il dollaro.
+ * Pairs quoted directly by Kraken, only if liquid. EUR/JPY, EUR/AUD, EUR/CAD and AUD/JPY on Kraken have
+ * huge spreads and almost no updates: they are calculated from the USD pairs instead.
  */
 export const KRAKEN_DIRECT = ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'EURGBP', 'EURCHF'];
-/** USD/JPY su Kraken è illiquido (centinaia di pip di spread): si prende da Hyperliquid (xyz:JPY). */
+/** USD/JPY on Kraken is illiquid (hundreds of pips of spread): taken from Hyperliquid (xyz:JPY). */
 export const HL_FX: Record<string, string> = { USDJPY: 'xyz:JPY' };
 
 export interface FxPair { symbol: string; base: string; quote: string }
 
-/** Tutte le coppie tra le valute live (21), nell'ordine convenzionale. */
+/** All pairs between the live currencies (21), in conventional order. */
 export function fxPairs(): FxPair[] {
   const list = FX_ORDER.filter((c) => FX_LIVE.includes(c));
   const out: FxPair[] = [];
@@ -23,13 +23,13 @@ export function fxPairs(): FxPair[] {
   return out;
 }
 
-/** Quanti USD vale 1 unità di una valuta, dai sei cambi diretti con il dollaro. */
+/** How many USD one unit of a currency is worth, from the six direct USD pairs. */
 export const USD_LEG: Record<string, { symbol: string; inverted: boolean }> = {
   EUR: { symbol: 'EURUSD', inverted: false }, GBP: { symbol: 'GBPUSD', inverted: false }, AUD: { symbol: 'AUDUSD', inverted: false },
   CAD: { symbol: 'USDCAD', inverted: true }, CHF: { symbol: 'USDCHF', inverted: true }, JPY: { symbol: 'USDJPY', inverted: true },
 };
 
-/** Calcola i cambi incrociati ogni volta che si muove uno dei cambi con il dollaro. */
+/** Calculates the cross rates whenever one of the USD pairs moves. */
 export class CrossBuilder {
   private usd = new Map<string, { bid: number; ask: number }>();
   constructor(private crosses: FxPair[]) {}

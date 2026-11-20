@@ -42,11 +42,11 @@ export class TradingEngine {
 
   private inst(symbol: string): Instrument {
     const i = BY_SYMBOL.get(symbol);
-    if (!i) throw new Error(`strumento sconosciuto: ${symbol}`);
+    if (!i) throw new Error(`unknown instrument: ${symbol}`);
     return i;
   }
 
-  /** Prezzo che vede il cliente (grezzo + spread del suo gruppo). */
+  /** The price the client sees (raw + their group's spread). */
   quote(acc: Account, symbol: string, now = new Date()): Quote | undefined {
     const raw = this.market.raw(symbol);
     if (!raw) return undefined;
@@ -56,7 +56,7 @@ export class TradingEngine {
       sessionMultiplier(group, inst, now));
   }
 
-  /** Nozionale in USD: forex = lotti × contratto × valore della valuta base, altri = prezzo × quantità. */
+  /** Notional in USD: forex = lots × contract × base currency value, others = price × quantity. */
   private notionalUsd(inst: Instrument, lots: number, price: number): number {
     if (inst.cls === 'forex') return lots * inst.contractSize * this.market.toUsd(inst.base);
     return lots * inst.contractSize * price * this.market.toUsd(inst.quote);
@@ -100,26 +100,26 @@ export class TradingEngine {
   }
 
   private validate(inst: Instrument, lots: number) {
-    if (!(lots >= inst.minLot && lots <= inst.maxLot)) throw new Error(`volume fuori limiti (${inst.minLot}–${inst.maxLot})`);
+    if (!(lots >= inst.minLot && lots <= inst.maxLot)) throw new Error(`volume out of limits (${inst.minLot}–${inst.maxLot})`);
     const steps = lots / inst.lotStep;
-    if (Math.abs(steps - Math.round(steps)) > 1e-6) throw new Error(`passo volume ${inst.lotStep}`);
+    if (Math.abs(steps - Math.round(steps)) > 1e-6) throw new Error(`volume step ${inst.lotStep}`);
   }
 
   private checkStops(side: Side, price: number, sl?: number, tp?: number) {
-    if (side === 'buy' && ((sl && sl >= price) || (tp && tp <= price))) throw new Error('SL/TP non validi per un acquisto');
-    if (side === 'sell' && ((sl && sl <= price) || (tp && tp >= price))) throw new Error('SL/TP non validi per una vendita');
+    if (side === 'buy' && ((sl && sl >= price) || (tp && tp <= price))) throw new Error('invalid SL/TP for a buy');
+    if (side === 'sell' && ((sl && sl <= price) || (tp && tp >= price))) throw new Error('invalid SL/TP for a sell');
   }
 
   openMarket(acc: Account, symbol: string, side: Side, lots: number, sl?: number, tp?: number): Position {
     const inst = this.inst(symbol);
     this.validate(inst, lots);
     const q = this.quote(acc, symbol);
-    if (!q) throw new Error('nessun prezzo disponibile');
+    if (!q) throw new Error('no price available');
     const price = side === 'buy' ? q.ask : q.bid;
     this.checkStops(side, price, sl, tp);
     const free = this.snapshot(acc).freeMargin;
     const need = this.marginOf(acc, { symbol, lots, openPrice: price });
-    if (need > free) throw new Error(`margine insufficiente (richiesto ${r2(need)}, libero ${free})`);
+    if (need > free) throw new Error(`insufficient margin (required ${r2(need)}, free ${free})`);
     const commission = this.pricing.group(acc.groupId).commissionPerLot[inst.cls] * lots;
     acc.balance -= commission;
     const pos: Position = { id: ++seq, symbol, side, lots, openPrice: price, openTime: Date.now(), sl, tp, swap: 0, commission };
@@ -131,10 +131,10 @@ export class TradingEngine {
     const inst = this.inst(symbol);
     this.validate(inst, lots);
     const q = this.quote(acc, symbol);
-    if (!q) throw new Error('nessun prezzo disponibile');
+    if (!q) throw new Error('no price available');
     const ref = side === 'buy' ? q.ask : q.bid;
     const ok = (side === 'buy' && type === 'limit') || (side === 'sell' && type === 'stop') ? price < ref : price > ref;
-    if (!ok) throw new Error('prezzo dell\'ordine pendente non valido rispetto al mercato');
+    if (!ok) throw new Error('pending order price is not valid relative to the market');
     const o: Pending = { id: ++seq, symbol, side, type, lots, price, sl, tp, time: Date.now() };
     acc.pending.push(o);
     return o;
@@ -146,7 +146,7 @@ export class TradingEngine {
 
   modifyPosition(acc: Account, id: number, sl?: number, tp?: number) {
     const p = acc.positions.find((x) => x.id === id);
-    if (!p) throw new Error('posizione non trovata');
+    if (!p) throw new Error('position not found');
     const q = this.quote(acc, p.symbol)!;
     this.checkStops(p.side, p.side === 'buy' ? q.bid : q.ask, sl, tp);
     p.sl = sl;
@@ -155,7 +155,7 @@ export class TradingEngine {
 
   closePosition(acc: Account, id: number, reason: Trade['reason'] = 'manual'): Trade {
     const p = acc.positions.find((x) => x.id === id);
-    if (!p) throw new Error('posizione non trovata');
+    if (!p) throw new Error('position not found');
     const q = this.quote(acc, p.symbol)!;
     const closePrice = p.side === 'buy' ? q.bid : q.ask;
     const pnl = this.pnlOf(acc, p);
@@ -169,7 +169,7 @@ export class TradingEngine {
     return t;
   }
 
-  /** Chiamato a ogni tick grezzo: SL/TP, ordini pendenti, stop-out. Ritorna true se qualcosa è cambiato. */
+  /** Called on every raw tick: SL/TP, pending orders, stop-out. Returns true if anything changed. */
   onTick(symbol: string): boolean {
     let changed = false;
     for (const acc of this.accounts.values()) {
@@ -190,7 +190,7 @@ export class TradingEngine {
           : (o.type === 'limit' ? px >= o.price : px <= o.price);
         if (!hit) continue;
         acc.pending = acc.pending.filter((x) => x.id !== o.id);
-        try { this.openMarket(acc, o.symbol, o.side, o.lots, o.sl, o.tp); } catch { /* margine insufficiente: ordine annullato */ }
+        try { this.openMarket(acc, o.symbol, o.side, o.lots, o.sl, o.tp); } catch { /* insufficient margin: order cancelled */ }
         changed = true;
       }
       changed = this.stopOut(acc) || changed;
@@ -211,7 +211,7 @@ export class TradingEngine {
     return closed;
   }
 
-  /** Addebita/accredita lo swap notturno su tutte le posizioni aperte. */
+  /** Charges/credits the overnight swap on all open positions. */
   applyRollover(now: Date, groupId?: string): number {
     let n = 0;
     for (const acc of this.accounts.values()) {

@@ -52,7 +52,7 @@ export default function Chart({ inst, positions }: { inst: Instrument; positions
   const [ind, setInd] = useState({ sma: false, ema: false, bb: false });
   const [last, setLast] = useState<Candle>();
 
-  // crea il grafico una sola volta
+  // create the chart once
   useEffect(() => {
     const el = box.current!;
     const chart = createChart(el, {
@@ -102,7 +102,7 @@ export default function Chart({ inst, positions }: { inst: Instrument; positions
     if (ind.bb) { const b = bollinger(d); add(b.up, '#26c6da'); add(b.low, '#26c6da'); }
   };
 
-  // carica dati a ogni cambio simbolo/timeframe
+  // load data on every symbol/timeframe change
   useEffect(() => {
     let off = false;
     api<Candle[]>(`/api/candles?symbol=${inst.symbol}&tf=${tf}&limit=600`).then((c) => {
@@ -133,7 +133,7 @@ export default function Chart({ inst, positions }: { inst: Instrument; positions
     setLast({ ...c });
   }), [inst.symbol, tf, type]);
 
-  // linee delle posizioni aperte
+  // price lines for open positions
   useEffect(() => {
     const s = mainRef.current;
     if (!s) return;
@@ -155,7 +155,7 @@ export default function Chart({ inst, positions }: { inst: Instrument; positions
         <b className="chart-title">{inst.symbol} <small>{inst.name}</small></b>
         <div className="seg">{TFS.map((x) => <button key={x} className={x === tf ? 'on' : ''} onClick={() => setTf(x)}>{x}</button>)}</div>
         <div className="seg">
-          {(['candles', 'line', 'area'] as ChartType[]).map((x) => <button key={x} className={x === type ? 'on' : ''} onClick={() => setType(x)}>{x === 'candles' ? 'Candele' : x === 'line' ? 'Linea' : 'Area'}</button>)}
+          {(['candles', 'line', 'area'] as ChartType[]).map((x) => <button key={x} className={x === type ? 'on' : ''} onClick={() => setType(x)}>{x === 'candles' ? 'Candles' : x === 'line' ? 'Line' : 'Area'}</button>)}
         </div>
         <div className="seg">
           <button className={ind.sma ? 'on' : ''} onClick={() => setInd({ ...ind, sma: !ind.sma })}>SMA 20</button>

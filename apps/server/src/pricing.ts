@@ -3,35 +3,35 @@ import path from 'node:path';
 import type { AssetClass, Instrument, SwapRule } from './instruments.js';
 
 /**
- * MOTORE PREZZI
- * ─────────────
- * prezzo cliente = prezzo grezzo del liquidity provider + regola di spread.
- * Risoluzione (la prima che esiste vince):
- *   1. override del singolo cliente  →  account.spreadOverrides[symbol]
- *   2. override del gruppo per simbolo →  group.symbolSpread[symbol]
- *   3. regola del gruppo per classe di asset → group.classSpread[cls]
- * Sopra il risultato si applica il moltiplicatore di sessione (allargamenti in news/rollover).
+ * PRICING ENGINE
+ * ──────────────
+ * client price = liquidity provider's raw price + spread rule.
+ * Resolution (the first one that exists wins):
+ *   1. per-client override        →  account.spreadOverrides[symbol]
+ *   2. group override per symbol  →  group.symbolSpread[symbol]
+ *   3. group rule per asset class →  group.classSpread[cls]
+ * On top of the result the session multiplier is applied (widening during news/rollover).
  */
 
 export type SpreadMode = 'raw' | 'fixed' | 'markup_pips' | 'markup_pct';
 
 export interface SpreadRule {
   mode: SpreadMode;
-  /** raw: ignorato · fixed: pip · markup_pips: pip aggiunti · markup_pct: % dello spread grezzo */
+  /** raw: ignored · fixed: pips · markup_pips: pips added · markup_pct: % of the raw spread */
   value: number;
-  /** limiti sullo spread finale, in pip */
+  /** limits on the final spread, in pips */
   min?: number;
   max?: number;
 }
 
 export interface SessionRule {
   name: string;
-  /** giorni UTC 0=dom…6=sab; vuoto = tutti */
+  /** UTC weekdays 0=Sun…6=Sat; empty = every day */
   days: number[];
   from: string; // 'HH:MM' UTC
   to: string;
   multiplier: number;
-  /** se presente, limita a queste classi */
+  /** if present, restricts to these classes */
   classes?: AssetClass[];
 }
 
@@ -42,12 +42,12 @@ export interface GroupConfig {
   marginCallLevel: number;
   stopOutLevel: number;
   swapFree: boolean;
-  /** maggiorazione del broker sullo swap: aumenta gli addebiti e riduce gli accrediti (%) */
+  /** broker markup on swap: increases charges and reduces credits (%) */
   swapMarkupPct: number;
   rolloverHourUtc: number;
   classSpread: Record<AssetClass, SpreadRule>;
   symbolSpread: Record<string, SpreadRule>;
-  /** commissione per lotto e per lato (USD) */
+  /** commission per lot and per side (USD) */
   commissionPerLot: Record<AssetClass, number>;
   swapOverrides: Record<string, SwapRule>;
   sessions: SessionRule[];
@@ -68,7 +68,7 @@ export function defaultConfig(): PricingConfig {
   return {
     groups: [
       {
-        id: 'standard', name: 'Standard · spread con markup', leverage: 100, marginCallLevel: 100, stopOutLevel: 50,
+        id: 'standard', name: 'Standard · spread with markup', leverage: 100, marginCallLevel: 100, stopOutLevel: 50,
         swapFree: false, swapMarkupPct: 20, rolloverHourUtc: 22,
         classSpread: {
           forex: rule('markup_pips', 1.2), crypto: rule('markup_pct', 40), index: rule('markup_pips', 0.8),
@@ -79,7 +79,7 @@ export function defaultConfig(): PricingConfig {
         swapOverrides: {}, sessions: [ROLLOVER_WIDEN],
       },
       {
-        id: 'ecn', name: 'ECN · spread grezzo + commissione', leverage: 200, marginCallLevel: 100, stopOutLevel: 40,
+        id: 'ecn', name: 'ECN · raw spread + commission', leverage: 200, marginCallLevel: 100, stopOutLevel: 40,
         swapFree: false, swapMarkupPct: 10, rolloverHourUtc: 22,
         classSpread: {
           forex: rule('markup_pips', 0.1), crypto: rule('markup_pct', 5), index: rule('markup_pips', 0.1),
@@ -90,7 +90,7 @@ export function defaultConfig(): PricingConfig {
         swapOverrides: {}, sessions: [ROLLOVER_WIDEN],
       },
       {
-        id: 'islamic', name: 'Islamico · senza swap', leverage: 100, marginCallLevel: 100, stopOutLevel: 50,
+        id: 'islamic', name: 'Islamic · swap-free', leverage: 100, marginCallLevel: 100, stopOutLevel: 50,
         swapFree: true, swapMarkupPct: 0, rolloverHourUtc: 22,
         classSpread: {
           forex: rule('markup_pips', 1.8), crypto: rule('markup_pct', 50), index: rule('markup_pips', 1.2),
@@ -100,7 +100,7 @@ export function defaultConfig(): PricingConfig {
         swapOverrides: {}, sessions: [ROLLOVER_WIDEN],
       },
       {
-        id: 'fixed', name: 'Spread fisso (market maker)', leverage: 100, marginCallLevel: 100, stopOutLevel: 50,
+        id: 'fixed', name: 'Fixed spread (market maker)', leverage: 100, marginCallLevel: 100, stopOutLevel: 50,
         swapFree: false, swapMarkupPct: 30, rolloverHourUtc: 22,
         classSpread: {
           forex: rule('fixed', 2), crypto: rule('fixed', 60), index: rule('fixed', 2),
@@ -136,7 +136,7 @@ export class PricingStore {
   }
   updateGroup(g: GroupConfig) {
     const i = this.config.groups.findIndex((x) => x.id === g.id);
-    if (i < 0) throw new Error('gruppo sconosciuto');
+    if (i < 0) throw new Error('unknown group');
     this.config.groups[i] = g;
     this.save();
   }
@@ -157,7 +157,7 @@ const toMin = (hhmm: string) => {
   return h * 60 + m;
 };
 
-/** moltiplicatore massimo tra le sessioni attive */
+/** highest multiplier among the active sessions */
 export function sessionMultiplier(group: GroupConfig, inst: Instrument, now: Date): number {
   const mins = now.getUTCHours() * 60 + now.getUTCMinutes();
   const day = now.getUTCDay();
@@ -179,11 +179,11 @@ export interface Quote {
 }
 
 const EPS = 1e-9;
-/** bid per difetto, ask per eccesso: l'arrotondamento non riduce mai lo spread del broker. */
+/** bid rounded down, ask rounded up: rounding never reduces the broker's spread. */
 const down = (v: number, digits: number) => Number((Math.floor(v * 10 ** digits + EPS) / 10 ** digits).toFixed(digits));
 const up = (v: number, digits: number) => Number((Math.ceil(v * 10 ** digits - EPS) / 10 ** digits).toFixed(digits));
 
-/** Applica la regola allo spread grezzo. Il prezzo medio resta quello del provider. */
+/** Applies the rule to the raw spread. The mid price stays the provider's. */
 export function applySpread(raw: Quote, inst: Instrument, r: SpreadRule, mult = 1): Quote {
   const rawSpread = raw.ask - raw.bid;
   let spread: number;
@@ -200,7 +200,7 @@ export function applySpread(raw: Quote, inst: Instrument, r: SpreadRule, mult = 
   return { bid: down(mid - spread / 2, inst.digits), ask: up(mid + spread / 2, inst.digits) };
 }
 
-/** Swap effettivo (override gruppo > default strumento) con la maggiorazione del broker. */
+/** Effective swap (group override > instrument default) with the broker markup. */
 export function resolveSwap(group: GroupConfig, inst: Instrument): SwapRule {
   const base = group.swapOverrides[inst.symbol] ?? inst.swap;
   if (group.swapFree) return { ...base, long: 0, short: 0 };
@@ -209,8 +209,8 @@ export function resolveSwap(group: GroupConfig, inst: Instrument): SwapRule {
 }
 
 /**
- * Swap in USD per una posizione per una notte.
- * `quoteToUsd`: tasso quote→USD · `notionalUsd`: nozionale della posizione in USD.
+ * Swap in USD for one position for one night.
+ * `quoteToUsd`: quote→USD rate · `notionalUsd`: the position's notional in USD.
  */
 export function swapAmountUsd(
   inst: Instrument, swap: SwapRule, side: 'buy' | 'sell', lots: number,

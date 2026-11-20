@@ -1,7 +1,7 @@
 {
   "name": "BrokerOS Trading Terminal",
   "short_name": "BrokerOS",
-  "description": "Terminale di trading: forex, indici, materie prime, crypto e azioni",
+  "description": "Trading terminal: forex, indices, commodities, crypto and stocks",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",

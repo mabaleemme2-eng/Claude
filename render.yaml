@@ -1,4 +1,4 @@
-# Deploy con un clic su Render: New + → Blueprint → collega questo repository.
+# One-click deploy on Render: New + → Blueprint → connect this repository.
 services:
   - type: web
     name: brokeros-terminal
@@ -8,6 +8,6 @@ services:
     healthCheckPath: /api/groups
     envVars:
       - key: ADMIN_KEY
-        generateValue: true   # la chiave del pannello admin: la trovi in Environment
+        generateValue: true   # admin panel key: find it under Environment
       - key: NODE_ENV
         value: production

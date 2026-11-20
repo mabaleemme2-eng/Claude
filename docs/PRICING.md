@@ -1,39 +1,39 @@
-# Prezzi, spread e swap
+# Prices, spreads and swaps
 
-## Flusso
-`Liquidity provider (bid/ask grezzo)` → `regola di spread` → `moltiplicatore di sessione` → `prezzo cliente`.
-Il prezzo medio (mid) resta quello del provider; il broker modifica solo l'ampiezza. Il bid è arrotondato per difetto e l'ask per eccesso, così l'arrotondamento non riduce mai lo spread.
+## Flow
+`Liquidity provider (raw bid/ask)` → `spread rule` → `session multiplier` → `client price`.
+The mid price stays the provider's; the broker only changes the width. The bid is rounded down and the ask rounded up, so rounding never reduces the spread.
 
-## Risoluzione della regola (la prima trovata vince)
-1. override del **singolo cliente** (`account.spreadOverrides`)
-2. override del **gruppo per simbolo** (`group.symbolSpread`)
-3. regola del **gruppo per classe** (`group.classSpread`)
+## Rule resolution (the first one found wins)
+1. override for the **individual client** (`account.spreadOverrides`)
+2. **group override per symbol** (`group.symbolSpread`)
+3. **group rule per asset class** (`group.classSpread`)
 
-## Modalità di spread
-| Modalità | Spread finale |
+## Spread modes
+| Mode | Final spread |
 |---|---|
-| `raw` | quello del provider |
-| `markup_pips` | provider + N pip |
+| `raw` | the provider's |
+| `markup_pips` | provider + N pips |
 | `markup_pct` | provider × (1 + N%) |
-| `fixed` | N pip, indipendente dal provider |
+| `fixed` | N pips, independent of the provider |
 
-`min`/`max` (in pip) limitano il risultato. La **commissione per lotto** (conti ECN) è separata, per classe di asset e per lato.
+`min`/`max` (in pips) clamp the result. The **commission per lot** (ECN accounts) is separate, per asset class and per side.
 
-## Sessioni
-Finestre orarie UTC (con giorni e classi opzionali) che moltiplicano lo spread: rollover, news, aperture. Si applica il moltiplicatore più alto tra quelle attive.
+## Sessions
+UTC time windows (with optional days and classes) that multiply the spread: rollover, news, market opens. The highest multiplier among the active ones applies.
 
 ## Swap
-Valore base per strumento, sovrascrivibile per gruppo. Tre unità:
-- `pips`: pip per lotto per notte
-- `percent`: % annua sul nozionale (÷365)
-- `money`: USD per lotto
+Base value per instrument, overridable per group. Three units:
+- `pips`: pips per lot per night
+- `percent`: annual % of notional (÷365)
+- `money`: USD per lot
 
-Poi: **maggiorazione del broker** (`swapMarkupPct`: aumenta gli addebiti, riduce gli accrediti), **triple swap** nel giorno impostato (mercoledì per forex/CFD, nessuno per crypto) e **swap-free** per i conti islamici. Il rollover gira all'ora UTC del gruppo (default 22:00) e si può lanciare a mano dal pannello admin.
+On top: the **broker markup** (`swapMarkupPct`: increases charges, reduces credits), **triple swap** on the configured weekday (Wednesday for forex/CFDs, none for crypto) and **swap-free** for Islamic accounts. The rollover runs at the group's UTC hour (default 22:00) and can be triggered by hand from the admin panel.
 
-## Gruppi predefiniti
-Standard (markup), ECN (grezzo + commissione), Islamico (swap-free), Fisso (market maker).
+## Default groups
+Standard (markup), ECN (raw + commission), Islamic (swap-free), Fixed (market maker).
 
-## API admin (header `x-admin-key`)
+## Admin API (header `x-admin-key`)
 - `GET/PUT /api/admin/pricing` · `POST /api/admin/pricing/reset`
-- `GET /api/admin/preview?symbol=EURUSD&group=ecn` — grezzo vs cliente, swap effettivo
+- `GET /api/admin/preview?symbol=EURUSD&group=ecn` — raw vs client, effective swap
 - `POST /api/admin/rollover`

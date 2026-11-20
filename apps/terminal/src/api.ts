@@ -32,7 +32,7 @@ export interface Candle { time: number; open: number; high: number; low: number;
 
 export const ADMIN_KEY_STORAGE = 'adminKey';
 
-/** Identificativo del conto demo di questo browser (nessun dato personale). */
+/** Demo account id of this browser (no personal data). */
 export const accountId = (): string => {
   try {
     let id = localStorage.getItem('accountId');

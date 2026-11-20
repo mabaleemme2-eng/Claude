@@ -72,7 +72,7 @@ td.days label { margin-right: 8px; white-space: nowrap; color: var(--mute); } td
   .chart-wrap { min-height: 0; } .ohlc { display: none; } .chart-bar { gap: 6px; padding: 6px; }
   .chart-bar .seg button { padding: 4px 7px; }
   .order { padding: 14px; } .order input, .order select { font-size: 16px; padding: 9px; } .quote-btns button { padding: 16px 6px; }
-  input, select { font-size: 16px; } /* evita lo zoom automatico su iPhone */
+  input, select { font-size: 16px; } /* prevents automatic zoom on iPhone */
   .admin { padding: 10px; } .tbl-wrap { -webkit-overflow-scrolling: touch; }
   .mnav { display: flex; border-top: 1px solid var(--line); background: var(--panel); padding-bottom: env(safe-area-inset-bottom); }
   .mnav button { flex: 1; border: 0; border-radius: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px; font-size: 11px; color: var(--mute); }

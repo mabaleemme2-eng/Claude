@@ -7,7 +7,7 @@ import OrderPanel from './components/OrderPanel';
 import Positions from './components/Positions';
 import AdminPanel from './components/AdminPanel';
 
-const fmt = (v: number | null | undefined, d = 2) => (v === null || v === undefined ? '—' : v.toLocaleString('it-IT', { minimumFractionDigits: d, maximumFractionDigits: d }));
+const fmt = (v: number | null | undefined, d = 2) => (v === null || v === undefined ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
 
 export default function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
@@ -30,19 +30,19 @@ export default function App() {
       <header className="topbar">
         <div className="brand">◆ BrokerOS <span>Terminal</span></div>
         <div className="metrics">
-          <div><label>Saldo</label><b>{fmt(acc?.balance)}</b></div>
+          <div><label>Balance</label><b>{fmt(acc?.balance)}</b></div>
           <div><label>Equity</label><b>{fmt(acc?.equity)}</b></div>
-          <div><label>Margine</label><b>{fmt(acc?.margin)}</b></div>
-          <div><label>Margine libero</label><b>{fmt(acc?.freeMargin)}</b></div>
-          <div><label>Livello</label><b className={acc?.marginLevel != null && acc.marginLevel < 150 ? 'neg' : ''}>{acc?.marginLevel != null ? fmt(acc.marginLevel, 0) + '%' : '—'}</b></div>
+          <div><label>Margin</label><b>{fmt(acc?.margin)}</b></div>
+          <div><label>Free margin</label><b>{fmt(acc?.freeMargin)}</b></div>
+          <div><label>Level</label><b className={acc?.marginLevel != null && acc.marginLevel < 150 ? 'neg' : ''}>{acc?.marginLevel != null ? fmt(acc.marginLevel, 0) + '%' : '—'}</b></div>
           <div><label>P&amp;L</label><b className={(acc?.floating ?? 0) >= 0 ? 'pos' : 'neg'}>{fmt(acc?.floating)}</b></div>
         </div>
         <div className="top-right">
-          <select value={acc?.groupId ?? ''} onChange={async (e) => setAccountFromServer(await api('/api/account/group', { method: 'POST', body: { groupId: e.target.value } }))} title="Gruppo di conto (spread/swap)">
+          <select value={acc?.groupId ?? ''} onChange={async (e) => setAccountFromServer(await api('/api/account/group', { method: 'POST', body: { groupId: e.target.value } }))} title="Account group (spread/swap)">
             {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
-          <button className={view === 'admin' ? 'tab on' : 'tab'} onClick={() => setView(view === 'admin' ? 'trade' : 'admin')}>⚙ Admin prezzi</button>
-          <span className={connected ? 'dot on' : 'dot'} title={connected ? 'Connesso' : 'Disconnesso'} />
+          <button className={view === 'admin' ? 'tab on' : 'tab'} onClick={() => setView(view === 'admin' ? 'trade' : 'admin')}>⚙ Pricing admin</button>
+          <span className={connected ? 'dot on' : 'dot'} title={connected ? 'Connected' : 'Disconnected'} />
         </div>
       </header>
       {view === 'admin' ? (
@@ -59,7 +59,7 @@ export default function App() {
       )}
       {view === 'trade' && (
         <nav className="mnav">
-          {([['markets', '☰', 'Mercati'], ['chart', '📈', 'Grafico'], ['order', '⚡', 'Ordine'], ['pos', '💼', `Posizioni${acc?.positions.length ? ` (${acc.positions.length})` : ''}`]] as const).map(([k, i, l]) => (
+          {([['markets', '☰', 'Markets'], ['chart', '📈', 'Chart'], ['order', '⚡', 'Order'], ['pos', '💼', `Positions${acc?.positions.length ? ` (${acc.positions.length})` : ''}`]] as const).map(([k, i, l]) => (
             <button key={k} className={mtab === k ? 'on' : ''} onClick={() => setMtab(k)}><span>{i}</span>{l}</button>
           ))}
         </nav>

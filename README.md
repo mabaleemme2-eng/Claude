@@ -1,79 +1,80 @@
-# BrokerOS — piattaforma white-label per broker
+# BrokerOS — white-label broker platform
 
-Obiettivo: prodotto vendibile a società che vogliono aprire un broker: **CRM/back office + portale cliente + terminale di trading + motore prezzi**.
+Goal: a product to sell to companies that want to open a broker: **CRM/back office + client portal + trading terminal + pricing engine**.
 
-## Stato attuale (v0.1)
+## Current status (v0.1)
 
-| Modulo | Stato |
+| Module | Status |
 |---|---|
-| Terminale web (grafici candele/linea/area, SMA/EMA/Bollinger, ordini market/limit/stop, SL/TP, posizioni, storico) | ✅ funzionante |
-| Motore prezzi: spread per gruppo/classe/simbolo/cliente, sessioni di allargamento, commissioni | ✅ + test |
-| Motore swap: pip/%/USD, triple swap, markup broker, conto islamico, rollover | ✅ + test |
-| Motore di trading: margine, leva, P&L, SL/TP, pendenti, stop-out | ✅ (in memoria) |
-| Pannello admin prezzi con anteprima grezzo vs cliente | ✅ |
-| Catalogo di 179 strumenti: 80 crypto, 21 coppie forex, indici, metalli, energia, agricoli, 60+ azioni, con ricerca e filtri | ✅ |
-| Prezzi LIVE gratuiti (176 strumenti su 179) con storico reale caricato su richiesta | ✅ Binance + Kraken + Hyperliquid, nessuna chiave |
-| Ancora simulati: NZDUSD, GER40, UK100 (badge giallo) | 🟡 nessuna fonte gratuita live trovata |
-| CRM (clienti, KYC, depositi/prelievi, documenti, IB, ticket, ruoli) | ⬜ prossimo |
-| Database Postgres, multi-tenant, autenticazione/RBAC | ⬜ prossimo |
-| Bridge/liquidity provider reale, A-book/B-book | ⬜ |
-| Pagamenti (PSP, crypto) | ⬜ |
+| Web terminal (candles/line/area charts, SMA/EMA/Bollinger, market/limit/stop orders, SL/TP, positions, history) | ✅ working |
+| Mobile layout + installable app (PWA) | ✅ working |
+| Pricing engine: spreads by group/class/symbol/client, widening sessions, commissions | ✅ + tests |
+| Swap engine: pips/%/USD, triple swap, broker markup, Islamic accounts, rollover | ✅ + tests |
+| Trading engine: margin, leverage, P&L, SL/TP, pending orders, stop-out | ✅ (in memory) |
+| Pricing admin panel with raw vs client price preview | ✅ |
+| Catalog of 179 instruments: 80 crypto, 21 forex pairs, indices, metals, energy, agriculture, 60+ stocks, with search and filters | ✅ |
+| LIVE free prices (176 of 179 instruments) with real history loaded on demand | ✅ Binance + Kraken + Hyperliquid, no keys |
+| Still simulated: NZDUSD, GER40, UK100 (yellow badge) | 🟡 no free live source found |
+| CRM (clients, KYC, deposits/withdrawals, documents, IBs, tickets, roles) | ⬜ next |
+| Postgres, multi-tenant, authentication/RBAC | ⬜ next |
+| Real liquidity-provider bridge, A-book/B-book | ⬜ |
+| Payments (PSPs, crypto) | ⬜ |
 
-## Provarla
+## Try it
 
-**Sul tuo computer** (serve Node.js 20 o più recente):
+**On your computer** (requires Node.js 20 or newer):
 ```bash
 git clone https://github.com/mabaleemme2-eng/Claude.git && cd Claude
 git checkout claude/trading-platform-broker-crm-woonte
 npm install
-npm start            # compila e avvia: apri http://localhost:4000
+npm start            # builds and starts: open http://localhost:4000
 ```
-- **Dal telefono** (stessa rete Wi-Fi): apri `http://<IP-del-computer>:4000`.
-- **Sviluppo** (ricarica automatica): `npm run dev` → http://localhost:5173.
-- **Pannello admin**: pulsante "Admin prezzi". In locale la chiave è `dev-admin`; in produzione viene generata (o la imposti con `ADMIN_KEY`).
+- **From your phone** (same Wi-Fi): open `http://<computer-IP>:4000`.
+- **Development** (hot reload): `npm run dev` → http://localhost:5173.
+- **Admin panel**: the "Pricing admin" button. Locally the key is `dev-admin`; in production it is generated (or set it with `ADMIN_KEY`).
 
-**Online con un link pubblico** (anche per il telefono), con Render:
-1. Crea un account su render.com e collega GitHub.
-2. *New + → Blueprint* → scegli questo repository e il branch → *Apply*. Legge `render.yaml` e fa tutto.
-3. Dopo qualche minuto ottieni un indirizzo `https://…onrender.com`. La chiave admin è in *Environment → ADMIN_KEY*.
-- Si può usare anche il `Dockerfile` su qualsiasi hosting (Fly.io, Railway, un VPS).
-- Il piano gratuito va in pausa dopo un po' di inattività (il primo caricamento è lento).
+**Online with a public link** (also for mobile), using Render:
+1. Create an account at render.com and connect GitHub.
+2. *New + → Blueprint* → pick this repository and branch → *Apply*. It reads `render.yaml` and does the rest.
+3. After a few minutes you get an `https://…onrender.com` address. The admin key is under *Environment → ADMIN_KEY*.
+- The `Dockerfile` also works on any host (Fly.io, Railway, a VPS).
+- The free plan sleeps after a while without traffic (the first load is slow).
 
-**Installarla come app**: aprendo il link in Chrome/Edge compare "Installa" (programma sul computer); su iPhone Safari → Condividi → *Aggiungi a Home*; su Android Chrome → menu → *Installa app*.
+**Install as an app**: opening the link in Chrome/Edge shows "Install" (a desktop program); on iPhone Safari → Share → *Add to Home Screen*; on Android Chrome → menu → *Install app*.
 
-Ogni browser ha il proprio conto demo (id casuale salvato nel browser), quindi più persone possono provare in parallelo senza vedersi.
+Every browser gets its own demo account (random id stored in the browser), so several people can try it in parallel without seeing each other.
 
 ```bash
-npm test             # test del motore prezzi
+npm test             # pricing engine tests
 ```
 
-## Prezzi gratuiti (nessuna chiave)
+## Free prices (no keys)
 
-| Classe | Fonte | Note |
+| Class | Source | Notes |
 |---|---|---|
-| Crypto (top 80 per volume, USDT≈USD) | Binance market data pubblici | tick `bookTicker` + klines reali |
-| Forex: EURUSD, GBPUSD, AUDUSD, USDCAD, USDCHF, EURGBP, EURCHF | Kraken (WebSocket v2) | spread stretti |
-| Forex: USDJPY | Hyperliquid `xyz:JPY` | USD/JPY su Kraken è illiquido (centinaia di pip di spread) |
-| Forex: 13 incroci (GBPJPY, EURJPY, AUDCAD, …) | calcolati dai cambi con il dollaro | EUR/JPY, EUR/AUD, EUR/CAD, AUD/JPY su Kraken sono illiquidi: scartati |
-| Indici, oro/argento/platino/palladio/rame, petrolio, gas, agricoli, azioni | Hyperliquid, dex `xyz` (HIP-3) | prezzi di perpetual, molto liquidi e allineati allo spot |
-| NZD*, GER40, UK100 | simulati | nessuna fonte gratuita live raggiungibile |
+| Crypto (top 80 by volume, USDT≈USD) | Binance public market data | `bookTicker` ticks + real klines |
+| Forex: EURUSD, GBPUSD, AUDUSD, USDCAD, USDCHF, EURGBP, EURCHF | Kraken (WebSocket v2) | tight spreads |
+| Forex: USDJPY | Hyperliquid `xyz:JPY` | USD/JPY on Kraken is illiquid (hundreds of pips of spread) |
+| Forex: 13 crosses (GBPJPY, EURJPY, AUDCAD, …) | calculated from the USD pairs | EUR/JPY, EUR/AUD, EUR/CAD, AUD/JPY on Kraken are illiquid: discarded |
+| Indices, gold/silver/platinum/palladium/copper, oil, gas, agriculture, stocks | Hyperliquid, `xyz` dex (HIP-3) | perpetual prices, very liquid and aligned with spot |
+| NZD pairs, GER40, UK100 | simulated | no free live source reachable |
 
-- Il catalogo si costruisce all'avvio (`catalog.ts`): scopre i mercati liquidi di Binance e Hyperliquid; uno strumento già definito mantiene lotti e swap, cambia solo la fonte.
-- Lo storico (`loaders.ts`) si scarica alla prima apertura del grafico di ogni strumento/timeframe, non all'avvio.
-- Le quotazioni forex con spread assurdo vengono scartate (mercato illiquido: meglio nessun prezzo che uno falso).
-- Altri dex di Hyperliquid (flx, km, cash…) hanno volume zero e prezzi vecchi: non usati. `USE_REAL_FEEDS=0` torna a tutto simulato.
-- **Hyperliquid/Kraken/Binance non sono feed per la ridistribuzione**: vanno bene per demo e sviluppo, per vendere ai clienti serve una licenza.
-- Swap dei cambi nuovi: derivati dal differenziale dei tassi (`catalog.ts`, valori indicativi) più una maggiorazione fissa; sono modificabili dal pannello admin.
-- Contratti e lotti dei nuovi strumenti sono valori di default ragionevoli, non le specifiche di un broker reale: da rivedere.
+- The catalog is built at startup (`catalog.ts`): it discovers the liquid markets of Binance and Hyperliquid; an instrument that is already defined keeps its lots and swap, only its source changes.
+- History (`loaders.ts`) is downloaded the first time a chart is opened for each instrument/timeframe, not at startup.
+- Forex quotes with an absurd spread are discarded (illiquid market: better no price than a false one).
+- Other Hyperliquid dexes (flx, km, cash…) have zero volume and stale prices: not used. `USE_REAL_FEEDS=0` goes back to fully simulated prices.
+- **Binance, Kraken and Hyperliquid are not redistribution feeds**: fine for demos and development; selling to clients requires a redistribution licence.
+- Swaps of the newly created pairs are derived from the interest-rate differential (`catalog.ts`, indicative values) plus a fixed markup; they can be edited from the admin panel.
+- Contract sizes and lots of the new instruments are reasonable defaults, not the specifications of a real broker: to be reviewed.
 
-## Struttura
+## Structure
 
-- `apps/server` — API REST + WebSocket, feed, candele, motore prezzi (`pricing.ts`), motore di trading (`trading.ts`)
+- `apps/server` — REST API + WebSocket, feeds, candles, pricing engine (`pricing.ts`), trading engine (`trading.ts`)
 - `apps/terminal` — React + Vite + lightweight-charts
-- `docs/PRICING.md` — come funzionano prezzi, spread e swap
+- `docs/PRICING.md` — how prices, spreads and swaps work
 
-## Note importanti
+## Important notes
 
-- I dati sono **simulati** e lo stato è in memoria: nessun valore reale.
-- Grafici: oggi `lightweight-charts` (Apache 2.0, richiede l'attribuzione TradingView mostrata nel logo). La libreria *Advanced Charts* di TradingView ha licenza separata da richiedere.
-- Prima di operare come broker servono licenze/regolamentazione, KYC/AML e provider di liquidità: aspetti legali da definire con consulenti.
+- Demo accounts live in memory and reset when the server restarts; there is no database yet.
+- Charts: today `lightweight-charts` (Apache 2.0, requires the TradingView attribution shown in the logo). TradingView's *Advanced Charts* library has a separate licence to request.
+- Before operating as a broker you need licences/regulation, KYC/AML and a liquidity provider: legal aspects to settle with advisers.

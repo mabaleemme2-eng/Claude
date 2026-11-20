@@ -4,11 +4,11 @@ import { useTicks } from '../feed';
 
 type Cls = Instrument['cls'];
 const CLASSES: [Cls, string][] = [
-  ['forex', 'Forex'], ['crypto', 'Crypto'], ['index', 'Indici'], ['commodity', 'Materie prime'], ['stock', 'Azioni'],
+  ['forex', 'Forex'], ['crypto', 'Crypto'], ['index', 'Indices'], ['commodity', 'Commodities'], ['stock', 'Stocks'],
 ];
 const SOURCE_LABEL: Record<Instrument['source'], string> = {
   binance: 'Live · Binance', hyperliquid: 'Live · Hyperliquid', kraken: 'Live · Kraken',
-  cross: 'Live · cambio incrociato calcolato', sim: 'SIMULATO · nessuna fonte live gratuita',
+  cross: 'Live · cross rate calculated from live pairs', sim: 'SIMULATED · no free live source',
 };
 
 export default function Watchlist({ instruments, selected, onSelect }: { instruments: Instrument[]; selected: string; onSelect: (s: string) => void }) {
@@ -25,13 +25,13 @@ export default function Watchlist({ instruments, selected, onSelect }: { instrum
   return (
     <aside className="watchlist">
       <div className="wl-search">
-        <input placeholder={`Cerca tra ${instruments.length} strumenti…`} value={q} onChange={(e) => setQ(e.target.value)} />
+        <input placeholder={`Search ${instruments.length} instruments…`} value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="chips">
-          <button className={cls === 'all' ? 'on' : ''} onClick={() => setCls('all')}>Tutti</button>
+          <button className={cls === 'all' ? 'on' : ''} onClick={() => setCls('all')}>All</button>
           {CLASSES.map(([c, l]) => <button key={c} className={cls === c ? 'on' : ''} onClick={() => setCls(c)}>{l}</button>)}
         </div>
       </div>
-      <div className="wl-head"><span>Simbolo</span><span>Bid</span><span>Ask</span></div>
+      <div className="wl-head"><span>Symbol</span><span>Bid</span><span>Ask</span></div>
       {CLASSES.map(([c, label]) => {
         const rows = filtered.filter((i) => i.cls === c);
         if (!rows.length) return null;
@@ -55,7 +55,7 @@ export default function Watchlist({ instruments, selected, onSelect }: { instrum
           </div>
         );
       })}
-      {!filtered.length && <p className="hint" style={{ padding: 12 }}>Nessuno strumento trovato.</p>}
+      {!filtered.length && <p className="hint" style={{ padding: 12 }}>No instruments found.</p>}
     </aside>
   );
 }

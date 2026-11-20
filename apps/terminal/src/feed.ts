@@ -9,7 +9,7 @@ let account: Account | null = null;
 let connected = false;
 const subs = new Set<() => void>();
 const tickListeners = new Set<TickListener>();
-// con centinaia di tick al secondo si aggiorna l'interfaccia al massimo una volta per frame
+// with hundreds of ticks per second, update the UI at most once per frame
 let scheduled = false;
 const flush = () => { scheduled = false; subs.forEach((f) => f()); };
 const notify = () => {

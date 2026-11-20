@@ -23,7 +23,7 @@ function aggregate(m1: Candle[], sec: number): Candle[] {
   return out;
 }
 
-/** Storico sintetico (solo per strumenti simulati): passeggiata all'indietro che termina al prezzo iniziale. */
+/** Synthetic history (simulated instruments only): a backwards random walk that ends at the starting price. */
 function genHistory(i: Instrument): Candle[] {
   const sigma = i.vol * Math.sqrt(240);
   const end = Math.floor(Date.now() / 60000) * 60 - 60;
@@ -45,8 +45,8 @@ function genHistory(i: Instrument): Candle[] {
 }
 
 /**
- * Candele per strumento e timeframe. Gli strumenti live caricano lo storico reale dalla fonte alla
- * prima richiesta (`ensure`); poi i tick aggiornano l'ultima barra.
+ * Candles per instrument and timeframe. Live instruments load real history from their source on the
+ * first request (`ensure`); after that, ticks update the last bar.
  */
 export class CandleStore {
   private data = new Map<string, Partial<Record<TfKey, Candle[]>>>();
@@ -65,7 +65,7 @@ export class CandleStore {
 
   setLoader(symbol: string, fn: CandleLoader) { this.loaders.set(symbol, fn); }
 
-  /** Carica (una sola volta) lo storico reale; se la fonte non risponde ritenta alla richiesta successiva. */
+  /** Loads real history once; if the source fails, it retries on the next request. */
   async ensure(symbol: string, tf: TfKey): Promise<void> {
     const key = `${symbol}:${tf}`;
     const loader = this.loaders.get(symbol);
@@ -76,13 +76,13 @@ export class CandleStore {
         if (bars.length) {
           const rec = this.data.get(symbol) ?? {};
           const live = rec[tf]?.at(-1);
-          // se nel frattempo i tick hanno già aperto barre più recenti, le conservo
+          // if ticks have meanwhile opened newer bars, keep them
           const merged = live && bars.length && live.time > bars[bars.length - 1].time ? [...bars, ...rec[tf]!.filter((c) => c.time > bars[bars.length - 1].time)] : bars;
           rec[tf] = merged;
           this.data.set(symbol, rec);
           this.loaded.add(key);
         }
-      }).catch((e) => console.warn(`[storico] ${symbol} ${tf}:`, (e as Error).message))
+      }).catch((e) => console.warn(`[history] ${symbol} ${tf}:`, (e as Error).message))
         .finally(() => this.loading.delete(key));
       this.loading.set(key, p);
     }
@@ -93,7 +93,7 @@ export class CandleStore {
     return (this.data.get(symbol)?.[tf] ?? []).slice(-limit);
   }
 
-  /** Aggiorna tutte le timeframe con un nuovo prezzo (bid). */
+  /** Updates every timeframe with a new price (bid). */
   update(symbol: string, tsMs: number, price: number) {
     let rec = this.data.get(symbol);
     if (!rec) { rec = {}; this.data.set(symbol, rec); }

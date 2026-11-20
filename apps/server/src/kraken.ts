@@ -5,7 +5,7 @@ import type { PriceFeed, RawTick } from './market.js';
 
 const KRAKEN_WS = process.env.KRAKEN_WS ?? 'wss://ws.kraken.com/v2';
 
-/** Forex spot da Kraken (WebSocket v2, canale ticker, dati pubblici senza chiave). */
+/** Spot forex from Kraken (WebSocket v2, ticker channel, public data, no key). */
 export class KrakenFeed implements PriceFeed {
   private ws?: WebSocket;
   private stopped = false;
@@ -31,9 +31,9 @@ export class KrakenFeed implements PriceFeed {
           const symbol = map.get(x.symbol);
           if (symbol && x.bid > 0 && x.ask > 0) this.onTick?.({ symbol, bid: x.bid, ask: x.ask, time: Date.now() });
         }
-      } catch { /* messaggio non valido */ }
+      } catch { /* invalid message */ }
     });
-    this.ws.on('error', (e) => console.warn('[kraken] errore:', e.message));
+    this.ws.on('error', (e) => console.warn('[kraken] error:', e.message));
     this.ws.on('close', () => { if (!this.stopped) setTimeout(() => this.connect(), 2000); });
   }
 

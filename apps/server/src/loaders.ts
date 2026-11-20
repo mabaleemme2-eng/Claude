@@ -28,7 +28,7 @@ async function hlBars(coin: string, tf: TfKey): Promise<Candle[]> {
   return rows.map((k) => ({ time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c }));
 }
 
-// cache breve: le crociere riusano gli stessi cambi con il dollaro
+// short cache: crosses reuse the same USD pairs
 const krakenCache = new Map<string, { at: number; p: Promise<Candle[]> }>();
 function krakenBars(pair: string, tf: TfKey): Promise<Candle[]> {
   const key = `${pair}:${tf}`;
@@ -47,7 +47,7 @@ function krakenBars(pair: string, tf: TfKey): Promise<Candle[]> {
 
 const invert = (b: Candle[]): Candle[] => b.map((x) => ({ time: x.time, open: 1 / x.open, high: 1 / x.low, low: 1 / x.high, close: 1 / x.close }));
 
-/** Serie "USD per 1 unità" di una valuta. */
+/** "USD per 1 unit" series of a currency. */
 async function usdSeries(ccy: string, tf: TfKey): Promise<Candle[]> {
   if (ccy === 'USD') return [];
   const leg = USD_LEG[ccy];
@@ -56,7 +56,7 @@ async function usdSeries(ccy: string, tf: TfKey): Promise<Candle[]> {
   return leg.inverted ? invert(bars) : bars;
 }
 
-/** Rapporto tra due serie; dove una delle due non ha scambiato (barre mancanti) riporta l'ultimo prezzo noto. */
+/** Ratio of two series; where one of them did not trade (missing bars) the last known price is carried forward. */
 function divide(a: Candle[], b: Candle[] | null): Candle[] {
   if (!b) return a;
   const am = new Map(a.map((x) => [x.time, x]));
@@ -80,7 +80,7 @@ function divide(a: Candle[], b: Candle[] | null): Candle[] {
   return out;
 }
 
-/** Collega a ogni strumento live il caricatore dello storico reale della sua fonte. */
+/** Attaches to every live instrument the loader of its source's real history. */
 export function registerLoaders(store: CandleStore) {
   const round = (symbol: string, bars: Candle[]) => {
     const d = BY_SYMBOL.get(symbol)!.digits;
