@@ -10,8 +10,14 @@ export interface SwapRule {
   tripleDay: number;
 }
 
+export type Source = 'binance' | 'hyperliquid' | 'kraken' | 'cross' | 'sim';
+
 export interface Instrument {
   symbol: string;
+  /** da dove arrivano i prezzi: 'sim' = simulato, 'cross' = calcolato da cambi live */
+  source: Source;
+  /** identificativo sulla fonte (es. BTCUSDT, xyz:GOLD, EUR/USD) */
+  feedId?: string;
   name: string;
   cls: AssetClass;
   digits: number;
@@ -35,7 +41,7 @@ const fxSwap = (long: number, short: number): SwapRule => ({ mode: 'pips', long,
 
 function fx(symbol: string, start: number, rawSpreadPips: number, long: number, short: number, jpy = false): Instrument {
   return {
-    symbol, name: `${symbol.slice(0, 3)}/${symbol.slice(3)}`, cls: 'forex',
+    symbol, source: 'sim', name: `${symbol.slice(0, 3)}/${symbol.slice(3)}`, cls: 'forex',
     digits: jpy ? 3 : 5, pip: jpy ? 0.01 : 0.0001, contractSize: 100000,
     minLot: 0.01, maxLot: 100, lotStep: 0.01,
     base: symbol.slice(0, 3), quote: symbol.slice(3),
@@ -49,7 +55,7 @@ function other(
   swap: SwapRule, quote = 'USD',
 ): Instrument {
   return {
-    symbol, name, cls, digits, pip, contractSize,
+    symbol, source: 'sim', name, cls, digits, pip, contractSize,
     minLot: lots[0], maxLot: lots[1], lotStep: lots[2],
     base: symbol, quote, start, vol, rawSpreadPips, swap,
   };
@@ -92,3 +98,12 @@ export const INSTRUMENTS: Instrument[] = [
 ];
 
 export const BY_SYMBOL = new Map(INSTRUMENTS.map((i) => [i.symbol, i]));
+
+/** Aggiunge o sostituisce strumenti (usato dalla scoperta del catalogo all'avvio). */
+export function registerInstruments(list: Instrument[]) {
+  for (const i of list) {
+    const idx = INSTRUMENTS.findIndex((x) => x.symbol === i.symbol);
+    if (idx >= 0) INSTRUMENTS[idx] = i; else INSTRUMENTS.push(i);
+    BY_SYMBOL.set(i.symbol, i);
+  }
+}

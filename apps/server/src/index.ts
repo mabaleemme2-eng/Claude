@@ -1,31 +1,33 @@
 import http from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { INSTRUMENTS, BY_SYMBOL } from './instruments.js';
-import { BINANCE_MAP, BinanceFeed, CompositeFeed, Market, SimulatedFeed } from './market.js';
-import { loadBinanceHistory } from './binanceHistory.js';
-import { HL_SYMBOLS, HyperliquidFeed, loadHyperliquidHistory } from './hyperliquid.js';
+import { BinanceFeed, CompositeFeed, Market, SimulatedFeed } from './market.js';
+import { HyperliquidFeed } from './hyperliquid.js';
+import { KrakenFeed } from './kraken.js';
+import { buildCatalog } from './catalog.js';
+import { registerLoaders } from './loaders.js';
 import { CandleStore, TF, type TfKey } from './candles.js';
 import { PricingStore, applySpread, resolveSpreadRule, resolveSwap, sessionMultiplier, type GroupConfig } from './pricing.js';
 import { TradingEngine } from './trading.js';
+
+/** USE_REAL_FEEDS=0 per tornare a tutto simulato (es. senza accesso a internet). */
+const REAL = process.env.USE_REAL_FEEDS !== '0';
+if (REAL) await buildCatalog();
 
 const PORT = Number(process.env.PORT ?? 4000);
 /** Chiave amministratore provvisoria: da sostituire con vera autenticazione (JWT/RBAC) nel CRM. */
 const ADMIN_KEY = process.env.ADMIN_KEY ?? 'dev-admin';
 
 const pricing = new PricingStore();
-/** USE_REAL_FEEDS=0 per tornare a tutto simulato (es. senza accesso a internet). */
-const REAL = process.env.USE_REAL_FEEDS !== '0';
-const realSymbols = new Set(REAL ? [...Object.keys(BINANCE_MAP), ...HL_SYMBOLS] : []);
 const market = new Market(new CompositeFeed([
-  new SimulatedFeed(new Set(INSTRUMENTS.map((i) => i.symbol).filter((s) => !realSymbols.has(s)))),
-  ...(REAL ? [new BinanceFeed(), new HyperliquidFeed()] : []),
+  new SimulatedFeed(),
+  ...(REAL ? [new BinanceFeed(), new HyperliquidFeed(), new KrakenFeed()] : []),
 ]));
 const candles = new CandleStore();
-if (REAL) {
-  void loadBinanceHistory(candles).then((ok) => console.log(`[binance] storico reale: ${ok.join(', ') || 'nessuno'}`));
-  void loadHyperliquidHistory(candles).then((ok) => console.log(`[hyperliquid] storico reale: ${ok.join(', ') || 'nessuno'}`));
-  console.log(`Prezzi LIVE: crypto (Binance) + forex/indici/metalli/azioni (Hyperliquid). Ancora simulati: ${
-    INSTRUMENTS.map((i) => i.symbol).filter((x) => !realSymbols.has(x)).join(', ')}`);
+if (REAL) registerLoaders(candles);
+{
+  const by = (src: string) => INSTRUMENTS.filter((i) => i.source === src).length;
+  console.log(`Strumenti: ${INSTRUMENTS.length} · live: binance ${by('binance')}, hyperliquid ${by('hyperliquid')}, kraken ${by('kraken')}, incroci ${by('cross')} · simulati: ${INSTRUMENTS.filter((i) => i.source === 'sim').map((i) => i.symbol).join(', ') || 'nessuno'}`);
 }
 const engine = new TradingEngine(market, pricing);
 const demo = engine.createAccount('demo', 'Conto Demo', 'standard', 10000);
@@ -64,7 +66,10 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
     if (m === 'GET' && p === '/api/candles') {
       const tf = (url.searchParams.get('tf') ?? 'M1') as TfKey;
       if (!(tf in TF)) throw new HttpError(400, 'timeframe non valida');
-      return send(candles.get(url.searchParams.get('symbol') ?? '', tf, Number(url.searchParams.get('limit') ?? 500)));
+      const symbol = url.searchParams.get('symbol') ?? '';
+      if (!BY_SYMBOL.has(symbol)) throw new HttpError(404, 'simbolo sconosciuto');
+      await candles.ensure(symbol, tf);
+      return send(candles.get(symbol, tf, Number(url.searchParams.get('limit') ?? 500)));
     }
 
     if (m === 'GET' && p === '/api/account') return send(engine.snapshot(demo));
@@ -141,6 +146,12 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 const clients = new Set<WebSocket>();
 wss.on('connection', (ws) => {
   clients.add(ws);
+  // snapshot dei prezzi attuali: i mercati poco mossi non manderebbero nulla finché non cambiano
+  for (const i of INSTRUMENTS) {
+    const q = engine.quote(demo, i.symbol);
+    const raw = market.raw(i.symbol);
+    if (q && raw) ws.send(JSON.stringify({ type: 'tick', symbol: i.symbol, bid: q.bid, ask: q.ask, time: raw.time }));
+  }
   ws.send(JSON.stringify({ type: 'account', data: engine.snapshot(demo) }));
   ws.on('close', () => clients.delete(ws));
 });

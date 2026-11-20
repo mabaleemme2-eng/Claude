@@ -9,7 +9,14 @@ let account: Account | null = null;
 let connected = false;
 const subs = new Set<() => void>();
 const tickListeners = new Set<TickListener>();
-const notify = () => subs.forEach((f) => f());
+// con centinaia di tick al secondo si aggiorna l'interfaccia al massimo una volta per frame
+let scheduled = false;
+const flush = () => { scheduled = false; subs.forEach((f) => f()); };
+const notify = () => {
+  if (scheduled) return;
+  scheduled = true;
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush); else setTimeout(flush, 16);
+};
 
 function connect() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);

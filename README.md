@@ -11,8 +11,9 @@ Obiettivo: prodotto vendibile a società che vogliono aprire un broker: **CRM/ba
 | Motore swap: pip/%/USD, triple swap, markup broker, conto islamico, rollover | ✅ + test |
 | Motore di trading: margine, leva, P&L, SL/TP, pendenti, stop-out | ✅ (in memoria) |
 | Pannello admin prezzi con anteprima grezzo vs cliente | ✅ |
-| Prezzi LIVE gratuiti: crypto (Binance) e forex EUR/GBP/JPY + crociere, indici, oro, argento, petrolio, azioni (Hyperliquid) | ✅ WebSocket + storico reale, nessuna chiave |
-| Ancora simulati: AUDUSD, USDCAD, USDCHF, NZDUSD, GER40, UK100 | 🟡 nessuna fonte gratuita live trovata |
+| Catalogo di 179 strumenti: 80 crypto, 21 coppie forex, indici, metalli, energia, agricoli, 60+ azioni, con ricerca e filtri | ✅ |
+| Prezzi LIVE gratuiti (176 strumenti su 179) con storico reale caricato su richiesta | ✅ Binance + Kraken + Hyperliquid, nessuna chiave |
+| Ancora simulati: NZDUSD, GER40, UK100 (badge giallo) | 🟡 nessuna fonte gratuita live trovata |
 | CRM (clienti, KYC, depositi/prelievi, documenti, IB, ticket, ruoli) | ⬜ prossimo |
 | Database Postgres, multi-tenant, autenticazione/RBAC | ⬜ prossimo |
 | Bridge/liquidity provider reale, A-book/B-book | ⬜ |
@@ -27,13 +28,24 @@ npm test             # test del motore prezzi
 ```
 Apri http://localhost:5173. Chiave admin di sviluppo: `dev-admin` (variabile `ADMIN_KEY`).
 
-## Prezzi gratuiti
+## Prezzi gratuiti (nessuna chiave)
 
-- **Crypto**: Binance market data pubblici (`data-stream.binance.vision`, `data-api.binance.vision`). USDT trattato come USD.
-- **Forex, indici, oro/argento/petrolio, azioni**: Hyperliquid, mercati HIP-3 del dex `xyz` (`api.hyperliquid.xyz`). Sono prezzi di *perpetual* molto liquidi e allineati allo spot (verificato: oro 3.622 vs PAXG 3.614, EUR 1,0977 vs EURUSDT 1,0979), ma non il feed interbancario. Gli altri dex di Hyperliquid hanno volume zero e prezzi vecchi: non usati. EURGBP/EURJPY/GBPJPY sono calcolati dalle componenti.
-- **Ancora simulati**: AUDUSD, USDCAD, USDCHF, NZDUSD, GER40, UK100.
-- `USE_REAL_FEEDS=0` torna a tutto simulato. Yahoo Finance non ufficiale risponde 429 dal cloud: scartato.
-- I feed gratuiti vanno bene per demo e sviluppo: per vendere ai clienti serve una licenza di ridistribuzione.
+| Classe | Fonte | Note |
+|---|---|---|
+| Crypto (top 80 per volume, USDT≈USD) | Binance market data pubblici | tick `bookTicker` + klines reali |
+| Forex: EURUSD, GBPUSD, AUDUSD, USDCAD, USDCHF, EURGBP, EURCHF | Kraken (WebSocket v2) | spread stretti |
+| Forex: USDJPY | Hyperliquid `xyz:JPY` | USD/JPY su Kraken è illiquido (centinaia di pip di spread) |
+| Forex: 13 incroci (GBPJPY, EURJPY, AUDCAD, …) | calcolati dai cambi con il dollaro | EUR/JPY, EUR/AUD, EUR/CAD, AUD/JPY su Kraken sono illiquidi: scartati |
+| Indici, oro/argento/platino/palladio/rame, petrolio, gas, agricoli, azioni | Hyperliquid, dex `xyz` (HIP-3) | prezzi di perpetual, molto liquidi e allineati allo spot |
+| NZD*, GER40, UK100 | simulati | nessuna fonte gratuita live raggiungibile |
+
+- Il catalogo si costruisce all'avvio (`catalog.ts`): scopre i mercati liquidi di Binance e Hyperliquid; uno strumento già definito mantiene lotti e swap, cambia solo la fonte.
+- Lo storico (`loaders.ts`) si scarica alla prima apertura del grafico di ogni strumento/timeframe, non all'avvio.
+- Le quotazioni forex con spread assurdo vengono scartate (mercato illiquido: meglio nessun prezzo che uno falso).
+- Altri dex di Hyperliquid (flx, km, cash…) hanno volume zero e prezzi vecchi: non usati. `USE_REAL_FEEDS=0` torna a tutto simulato.
+- **Hyperliquid/Kraken/Binance non sono feed per la ridistribuzione**: vanno bene per demo e sviluppo, per vendere ai clienti serve una licenza.
+- Swap dei cambi nuovi: derivati dal differenziale dei tassi (`catalog.ts`, valori indicativi) più una maggiorazione fissa; sono modificabili dal pannello admin.
+- Contratti e lotti dei nuovi strumenti sono valori di default ragionevoli, non le specifiche di un broker reale: da rivedere.
 
 ## Struttura
 

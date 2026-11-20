@@ -1,5 +1,5 @@
 export interface Instrument {
-  symbol: string; name: string; cls: 'forex' | 'crypto' | 'index' | 'commodity' | 'stock';
+  symbol: string; source: 'binance' | 'hyperliquid' | 'kraken' | 'cross' | 'sim'; name: string; cls: 'forex' | 'crypto' | 'index' | 'commodity' | 'stock';
   digits: number; pip: number; contractSize: number; minLot: number; maxLot: number; lotStep: number;
   base: string; quote: string; rawSpreadPips: number;
   swap: SwapRule;

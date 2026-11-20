@@ -4,6 +4,7 @@ import { gauss } from './market.js';
 export const TF = { M1: 60, M5: 300, M15: 900, H1: 3600, H4: 14400, D1: 86400 } as const;
 export type TfKey = keyof typeof TF;
 export interface Candle { time: number; open: number; high: number; low: number; close: number }
+export type CandleLoader = (tf: TfKey) => Promise<Candle[]>;
 
 const M1_BARS = 20000;
 const MAX_BARS = 6000;
@@ -22,7 +23,7 @@ function aggregate(m1: Candle[], sec: number): Candle[] {
   return out;
 }
 
-/** Storico sintetico: passeggiata all'indietro che termina al prezzo iniziale del simulatore. */
+/** Storico sintetico (solo per strumenti simulati): passeggiata all'indietro che termina al prezzo iniziale. */
 function genHistory(i: Instrument): Candle[] {
   const sigma = i.vol * Math.sqrt(240);
   const end = Math.floor(Date.now() / 60000) * 60 - 60;
@@ -35,8 +36,7 @@ function genHistory(i: Instrument): Candle[] {
     const o = closes[k - 1];
     const c = closes[k];
     bars.push({
-      time: end - (M1_BARS - 1 - k) * 60,
-      open: r(o), close: r(c),
+      time: end - (M1_BARS - 1 - k) * 60, open: r(o), close: r(c),
       high: r(Math.max(o, c) * (1 + Math.abs(gauss()) * sigma * 0.4)),
       low: r(Math.min(o, c) * (1 - Math.abs(gauss()) * sigma * 0.4)),
     });
@@ -44,43 +44,69 @@ function genHistory(i: Instrument): Candle[] {
   return bars;
 }
 
+/**
+ * Candele per strumento e timeframe. Gli strumenti live caricano lo storico reale dalla fonte alla
+ * prima richiesta (`ensure`); poi i tick aggiornano l'ultima barra.
+ */
 export class CandleStore {
-  private data = new Map<string, Record<TfKey, Candle[]>>();
+  private data = new Map<string, Partial<Record<TfKey, Candle[]>>>();
+  private loaders = new Map<string, CandleLoader>();
+  private loaded = new Set<string>();
+  private loading = new Map<string, Promise<void>>();
 
   constructor() {
-    for (const i of INSTRUMENTS) {
+    for (const i of INSTRUMENTS.filter((x) => x.source === 'sim')) {
       const m1 = genHistory(i);
-      const rec = { M1: m1 } as Record<TfKey, Candle[]>;
+      const rec: Partial<Record<TfKey, Candle[]>> = { M1: m1 };
       for (const tf of Object.keys(TF) as TfKey[]) if (tf !== 'M1') rec[tf] = aggregate(m1, TF[tf]);
       this.data.set(i.symbol, rec);
     }
   }
 
-  /** Sostituisce lo storico sintetico di una timeframe con barre reali. */
-  setSeries(symbol: string, tf: TfKey, bars: Candle[]) {
-    const rec = this.data.get(symbol);
-    if (rec && bars.length) rec[tf] = bars;
+  setLoader(symbol: string, fn: CandleLoader) { this.loaders.set(symbol, fn); }
+
+  /** Carica (una sola volta) lo storico reale; se la fonte non risponde ritenta alla richiesta successiva. */
+  async ensure(symbol: string, tf: TfKey): Promise<void> {
+    const key = `${symbol}:${tf}`;
+    const loader = this.loaders.get(symbol);
+    if (!loader || this.loaded.has(key)) return;
+    let p = this.loading.get(key);
+    if (!p) {
+      p = loader(tf).then((bars) => {
+        if (bars.length) {
+          const rec = this.data.get(symbol) ?? {};
+          const live = rec[tf]?.at(-1);
+          // se nel frattempo i tick hanno già aperto barre più recenti, le conservo
+          const merged = live && bars.length && live.time > bars[bars.length - 1].time ? [...bars, ...rec[tf]!.filter((c) => c.time > bars[bars.length - 1].time)] : bars;
+          rec[tf] = merged;
+          this.data.set(symbol, rec);
+          this.loaded.add(key);
+        }
+      }).catch((e) => console.warn(`[storico] ${symbol} ${tf}:`, (e as Error).message))
+        .finally(() => this.loading.delete(key));
+      this.loading.set(key, p);
+    }
+    await p;
   }
 
   get(symbol: string, tf: TfKey, limit = 500): Candle[] {
-    const arr = this.data.get(symbol)?.[tf] ?? [];
-    return arr.slice(-limit);
+    return (this.data.get(symbol)?.[tf] ?? []).slice(-limit);
   }
 
   /** Aggiorna tutte le timeframe con un nuovo prezzo (bid). */
   update(symbol: string, tsMs: number, price: number) {
-    const rec = this.data.get(symbol);
-    if (!rec) return;
+    let rec = this.data.get(symbol);
+    if (!rec) { rec = {}; this.data.set(symbol, rec); }
     for (const tf of Object.keys(TF) as TfKey[]) {
       const sec = TF[tf];
       const t = Math.floor(tsMs / 1000 / sec) * sec;
-      const arr = rec[tf];
+      const arr = (rec[tf] ??= []);
       const last = arr[arr.length - 1];
       if (last && last.time === t) {
         last.high = Math.max(last.high, price);
         last.low = Math.min(last.low, price);
         last.close = price;
-      } else {
+      } else if (!last || t > last.time) {
         arr.push({ time: t, open: last?.close ?? price, high: price, low: price, close: price });
         if (arr.length > MAX_BARS) arr.shift();
       }

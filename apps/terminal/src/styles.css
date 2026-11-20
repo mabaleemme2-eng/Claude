@@ -50,3 +50,9 @@ button.primary { background: var(--acc); border-color: var(--acc); color: #fff; 
 .card input[type=number] { width: 90px; } .card input[type=time] { width: 100px; } .mini td, .mini th { padding: 4px 8px; }
 td.days label { margin-right: 8px; white-space: nowrap; color: var(--mute); } td.days input { margin-right: 3px; }
 @media (max-width: 1000px) { .trade { grid-template-columns: 200px 1fr; } .order { display: none; } }
+
+.wl-search { padding: 8px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 2; }
+.wl-search input { width: 100%; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; } .chips button { padding: 2px 8px; font-size: 11px; border-radius: 10px; } .chips button.on { background: var(--acc); border-color: var(--acc); color: #fff; }
+.wl-head { top: 82px; z-index: 1; } .wl-group { cursor: pointer; user-select: none; }
+.src { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: middle; } .src.live { background: var(--pos); } .src.sim { background: #f0a30a; }
