@@ -1,0 +1,15 @@
+{
+  "name": "broker-platform",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "concurrently -n server,terminal -c blue,green \"npm run dev -w apps/server\" \"npm run dev -w apps/terminal\"",
+    "build": "npm run build -w apps/terminal",
+    "typecheck": "npm run typecheck -w apps/server && npm run typecheck -w apps/terminal",
+    "test": "npm run test -w apps/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
