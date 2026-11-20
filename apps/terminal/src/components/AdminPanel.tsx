@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ADMIN_KEY_STORAGE, adminKey, api, type AssetClass, type GroupConfig, type Instrument, type SpreadRule, type SwapRule } from '../api';
 import { setAccount } from '../feed';
 import { groupName, t, tErr, useLang, type Key } from '../i18n';
+import { askConfirm } from '../dialogs';
 
 const CLASSES: AssetClass[] = ['forex', 'crypto', 'index', 'commodity', 'stock'];
 const MODES: SpreadRule['mode'][] = ['raw', 'markup_pips', 'markup_pct', 'fixed'];
@@ -70,7 +71,7 @@ export default function AdminPanel({ instruments }: { instruments: Instrument[] 
         <select value={gid} onChange={(e) => setGid(e.target.value)}>{groups.map((x) => <option key={x.id} value={x.id}>{groupName(x.id, x.name)}</option>)}</select>
         <button className="primary" disabled={!dirty} onClick={save}>{t('saveChanges')}</button>
         <button onClick={load}>{t('discard')}</button>
-        <button onClick={async () => { if (confirm(t('restoreConfirm'))) { await api('/api/admin/pricing/reset', { method: 'POST', admin: true }); void load(); } }}>{t('restoreDefaults')}</button>
+        <button onClick={async () => { if (await askConfirm(t('restoreConfirm'))) { await api('/api/admin/pricing/reset', { method: 'POST', admin: true }); void load(); } }}>{t('restoreDefaults')}</button>
         <button onClick={async () => { const r = await api<{ positionsCharged: number; account: any }>('/api/admin/rollover', { method: 'POST', body: { groupId: gid }, admin: true }); setAccount(r.account); setMsg({ ok: true, text: t('rolloverApplied', { n: r.positionsCharged }) }); }}>{t('runRollover')}</button>
         {msg && <span className={msg.ok ? 'msg ok' : 'msg err'}>{msg.text}</span>}
       </div>

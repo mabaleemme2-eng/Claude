@@ -3,6 +3,7 @@ import WebSocket from 'ws';
 import { BY_SYMBOL, INSTRUMENTS, type Instrument } from './instruments.js';
 import { CrossBuilder, fxPairs } from './forex.js';
 import { proxyAgent } from './httpJson.js';
+import { gauss } from './util.js';
 
 export interface RawTick {
   symbol: string;
@@ -19,12 +20,6 @@ export interface PriceFeed {
   start(onTick: (t: RawTick) => void): void;
   stop(): void;
 }
-
-export const gauss = () => {
-  const u = 1 - Math.random();
-  const v = Math.random();
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-};
 
 /** Simulated feed for instruments without a live source (source = 'sim'). */
 export class SimulatedFeed implements PriceFeed {

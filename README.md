@@ -49,6 +49,15 @@ Every browser gets its own demo account (random id stored in the browser), so se
 npm test             # pricing engine tests
 ```
 
+## Browser-only demo (no server)
+
+A full version of the terminal that runs entirely in the browser: the real pricing/trading engine and the real REST handler (`apps/server/src/routes.ts`) execute inside the page. Prices are a **snapshot of the real market** (`apps/terminal/demo-data`, taken with `npm run snapshot` against a running server) **continued by a random-walk simulator**, so there are no live prices in this mode. Orders, margin, spreads, swaps, the pricing admin panel (no key needed) and the five languages all work.
+
+```bash
+npm run build:demo   # builds apps/terminal/dist-demo (index.html for local use, page.html for hosts that wrap pages)
+```
+It needs only static hosting (GitHub Pages, Netlify, an Artifact page…). Pricing changes made in the demo are kept in the browser's localStorage.
+
 ## Languages
 
 English is the base language. The menu in the top bar switches between English, Español, Italiano, Français and Português; the choice is remembered in the browser, and the first visit uses the browser's language when supported.

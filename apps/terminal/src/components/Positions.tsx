@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api, type Account } from '../api';
 import { setAccount } from '../feed';
 import { locale, t, tErr, useLang, type Key } from '../i18n';
+import { askConfirm, askPrompt, notify } from '../dialogs';
 
 const fmt = (v: number) => v.toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const time = (ms: number) => new Date(ms).toLocaleTimeString(locale());
@@ -10,12 +11,12 @@ export default function Positions({ acc, onSelect }: { acc: Account | null; onSe
   useLang();
   const [tab, setTab] = useState<'pos' | 'pend' | 'hist'>('pos');
   const run = async (path: string, method: string, body?: unknown) => {
-    try { setAccount(await api<Account>(path, { method, body })); } catch (e) { alert(tErr((e as Error).message)); }
+    try { setAccount(await api<Account>(path, { method, body })); } catch (e) { void notify(tErr((e as Error).message)); }
   };
-  const edit = (id: number, sl?: number, tp?: number) => {
-    const nsl = prompt(t('slPrompt'), sl ? String(sl) : '');
+  const edit = async (id: number, sl?: number, tp?: number) => {
+    const nsl = await askPrompt(t('slPrompt'), sl ? String(sl) : '');
     if (nsl === null) return;
-    const ntp = prompt(t('tpPrompt'), tp ? String(tp) : '');
+    const ntp = await askPrompt(t('tpPrompt'), tp ? String(tp) : '');
     if (ntp === null) return;
     void run(`/api/positions/${id}`, 'PATCH', { sl: nsl || undefined, tp: ntp || undefined });
   };
@@ -26,7 +27,7 @@ export default function Positions({ acc, onSelect }: { acc: Account | null; onSe
         <button className={tab === 'pend' ? 'on' : ''} onClick={() => setTab('pend')}>{t('tabPending')} ({acc?.pending.length ?? 0})</button>
         <button className={tab === 'hist' ? 'on' : ''} onClick={() => setTab('hist')}>{t('tabHistory')}</button>
         <span className="grow" />
-        <button className="link" onClick={() => confirm(t('resetConfirm')) && run('/api/account/reset', 'POST')}>{t('resetDemo')}</button>
+        <button className="link" onClick={async () => { if (await askConfirm(t('resetConfirm'))) await run('/api/account/reset', 'POST'); }}>{t('resetDemo')}</button>
       </div>
       <div className="tbl-wrap">
         {tab === 'pos' && (

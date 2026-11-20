@@ -1,4 +1,4 @@
-:root { --bg:#131722; --panel:#1b1f2d; --line:#2a2e39; --text:#d1d4dc; --mute:#8a93a6; --pos:#089981; --neg:#f23645; --acc:#2962ff; }
+:root { --bg:#131722; --panel:#1b1f2d; --line:#2a2e39; --text:#d1d4dc; --mute:#8a93a6; --pos:#089981; --neg:#f23645; --acc:#2962ff; color-scheme: dark; }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); font: 13px/1.4 Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; }
@@ -79,3 +79,10 @@ td.days label { margin-right: 8px; white-space: nowrap; color: var(--mute); } td
   .mnav button span { font-size: 18px; } .mnav button.on { color: #fff; background: #26304d; }
 }
 .lang { max-width: 118px; }
+
+.modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.modal { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; width: min(420px, 100%); }
+.modal p { margin: 0 0 12px; font-size: 14px; } .modal input { width: 100%; margin-bottom: 12px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.demo-banner { background: #2b2410; color: #f0c85a; font-size: 12px; padding: 6px 12px; border-bottom: 1px solid #4a3d14; }
+.src.demo { background: #f0a30a; }

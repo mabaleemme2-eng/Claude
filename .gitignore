@@ -3,3 +3,5 @@ dist
 apps/server/data
 *.log
 .env
+dist-demo
+apps/terminal/dist-demo

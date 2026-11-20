@@ -11,7 +11,9 @@
     "typecheck": "npm run typecheck -w apps/server && npm run typecheck -w apps/terminal",
     "test": "npm run test -w apps/server",
     "start": "npm run build && npm run start -w apps/server",
-    "serve": "npm run start -w apps/server"
+    "serve": "npm run start -w apps/server",
+    "build:demo": "npm run build:demo -w apps/terminal && node scripts/build-demo.mjs",
+    "snapshot": "node scripts/snapshot.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

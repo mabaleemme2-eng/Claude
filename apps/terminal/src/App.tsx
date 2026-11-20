@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api, setAccountFromServer, type Instrument } from './apiHelpers';
+import { api, setAccountFromServer, STANDALONE, type Instrument } from './apiHelpers';
+import { DialogHost } from './dialogs';
 import { useAccount, useConnected } from './feed';
 import { LANGS, groupName, locale, setLang, t, useLang } from './i18n';
 import Watchlist from './components/Watchlist';
@@ -16,6 +17,7 @@ export default function App() {
   const [view, setView] = useState<'trade' | 'admin'>('trade');
   const [mtab, setMtab] = useState<'markets' | 'chart' | 'order' | 'pos'>('chart');
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
+  const [takenAt, setTakenAt] = useState('');
   const lang = useLang();
   const acc = useAccount();
   const connected = useConnected();
@@ -23,12 +25,14 @@ export default function App() {
   useEffect(() => {
     api<Instrument[]>('/api/instruments').then(setInstruments);
     api<{ id: string; name: string }[]>('/api/groups').then(setGroups);
+    if (STANDALONE) api<{ takenAt: string }>('/api/demo').then((d) => setTakenAt(d.takenAt));
   }, [view]);
 
   const inst = instruments.find((i) => i.symbol === symbol);
 
   return (
     <div className="app">
+      {STANDALONE && takenAt && <div className="demo-banner">{t('demoBanner', { date: new Date(takenAt).toLocaleString(locale()) })}</div>}
       <header className="topbar">
         <div className="brand">◆ BrokerOS <span>Terminal</span></div>
         <div className="metrics">
@@ -62,6 +66,7 @@ export default function App() {
           {inst && <OrderPanel inst={inst} />}
         </main>
       )}
+      <DialogHost />
       {view === 'trade' && (
         <nav className="mnav">
           {([['markets', '☰', t('navMarkets')], ['chart', '📈', t('navChart')], ['order', '⚡', t('navOrder')], ['pos', '💼', `${t('navPositions')}${acc?.positions.length ? ` (${acc.positions.length})` : ''}`]] as const).map(([k, i, l]) => (

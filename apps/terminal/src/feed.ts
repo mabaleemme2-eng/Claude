@@ -18,22 +18,29 @@ const notify = () => {
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush); else setTimeout(flush, 16);
 };
 
+function handleMessage(m: any) {
+  if (m.type === 'tick' && m.bid !== undefined) {
+    const prev = ticks[m.symbol];
+    const t: Tick = { bid: m.bid, ask: m.ask, dir: prev ? (m.bid > prev.bid ? 1 : m.bid < prev.bid ? -1 : prev.dir) : 0 };
+    ticks = { ...ticks, [m.symbol]: t };
+    tickListeners.forEach((l) => l(m.symbol, t, m.time));
+  } else if (m.type === 'account') account = m.data;
+  notify();
+}
+
 function connect() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws?acc=${encodeURIComponent(accountId())}`);
   ws.onopen = () => { connected = true; notify(); };
   ws.onclose = () => { connected = false; notify(); setTimeout(connect, 1500); };
-  ws.onmessage = (e) => {
-    const m = JSON.parse(e.data);
-    if (m.type === 'tick' && m.bid !== undefined) {
-      const prev = ticks[m.symbol];
-      const t: Tick = { bid: m.bid, ask: m.ask, dir: prev ? (m.bid > prev.bid ? 1 : m.bid < prev.bid ? -1 : prev.dir) : 0 };
-      ticks = { ...ticks, [m.symbol]: t };
-      tickListeners.forEach((l) => l(m.symbol, t, m.time));
-    } else if (m.type === 'account') account = m.data;
-    notify();
-  };
+  ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
 }
-connect();
+
+if (import.meta.env.VITE_STANDALONE) {
+  // browser-only demo: the engine and the price simulation run inside the page
+  void import('./standalone/runtime').then((r) => r.startDemo(handleMessage)).then(() => { connected = true; notify(); });
+} else {
+  connect();
+}
 
 const subscribe = (f: () => void) => { subs.add(f); return () => subs.delete(f); };
 export const useTicks = () => useSyncExternalStore(subscribe, () => ticks);

@@ -1,5 +1,5 @@
 export interface Instrument {
-  symbol: string; source: 'binance' | 'hyperliquid' | 'kraken' | 'cross' | 'sim'; name: string; cls: 'forex' | 'crypto' | 'index' | 'commodity' | 'stock';
+  symbol: string; source: 'binance' | 'hyperliquid' | 'kraken' | 'cross' | 'sim' | 'demo'; name: string; cls: 'forex' | 'crypto' | 'index' | 'commodity' | 'stock';
   digits: number; pip: number; contractSize: number; minLot: number; maxLot: number; lotStep: number;
   base: string; quote: string; rawSpreadPips: number;
   swap: SwapRule;
@@ -45,7 +45,14 @@ export const accountId = (): string => {
 };
 export const adminKey = () => { try { return localStorage.getItem(ADMIN_KEY_STORAGE) ?? 'dev-admin'; } catch { return 'dev-admin'; } };
 
+/** Browser-only demo build (no server): the engine runs inside the page. */
+export const STANDALONE = !!import.meta.env.VITE_STANDALONE;
+
 export async function api<T>(path: string, init?: { method?: string; body?: unknown; admin?: boolean }): Promise<T> {
+  if (import.meta.env.VITE_STANDALONE) {
+    const { localApi } = await import('./standalone/runtime');
+    return localApi<T>(path, init);
+  }
   const res = await fetch(path, {
     method: init?.method ?? 'GET',
     headers: { 'content-type': 'application/json', 'x-account-id': accountId(), ...(init?.admin ? { 'x-admin-key': adminKey() } : {}) },

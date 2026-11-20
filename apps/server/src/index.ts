@@ -4,14 +4,16 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { INSTRUMENTS, BY_SYMBOL } from './instruments.js';
+import { INSTRUMENTS } from './instruments.js';
 import { BinanceFeed, CompositeFeed, Market, SimulatedFeed } from './market.js';
 import { HyperliquidFeed } from './hyperliquid.js';
 import { KrakenFeed } from './kraken.js';
 import { buildCatalog } from './catalog.js';
 import { registerLoaders } from './loaders.js';
-import { CandleStore, TF, type TfKey } from './candles.js';
-import { PricingStore, applySpread, resolveSpreadRule, resolveSwap, sessionMultiplier, type GroupConfig } from './pricing.js';
+import { CandleStore } from './candles.js';
+import { PricingStore } from './pricing.js';
+import { loadPricing, savePricing } from './persist.js';
+import { HttpError, handleApi } from './routes.js';
 import { TradingEngine } from './trading.js';
 
 /** USE_REAL_FEEDS=0 goes back to fully simulated prices (e.g. without internet access). */
@@ -24,7 +26,7 @@ const PROD = process.env.NODE_ENV === 'production';
 const GENERATED_KEY = !process.env.ADMIN_KEY && PROD;
 const ADMIN_KEY = process.env.ADMIN_KEY ?? (PROD ? randomBytes(12).toString('hex') : 'dev-admin');
 
-const pricing = new PricingStore();
+const pricing = new PricingStore(loadPricing(), savePricing);
 const market = new Market(new CompositeFeed([
   new SimulatedFeed(),
   ...(REAL ? [new BinanceFeed(), new HyperliquidFeed(), new KrakenFeed()] : []),
@@ -76,10 +78,6 @@ function serveStatic(urlPath: string, res: http.ServerResponse) {
   fs.createReadStream(file).pipe(res);
 }
 
-class HttpError extends Error {
-  constructor(public status: number, msg: string) { super(msg); }
-}
-
 const readBody = (req: http.IncomingMessage) =>
   new Promise<any>((resolve, reject) => {
     let s = '';
@@ -87,103 +85,27 @@ const readBody = (req: http.IncomingMessage) =>
     req.on('end', () => { try { resolve(s ? JSON.parse(s) : {}); } catch { reject(new HttpError(400, 'invalid JSON')); } });
   });
 
-const num = (v: unknown): number | undefined => (v === undefined || v === null || v === '' ? undefined : Number(v));
-
-function isAdmin(req: http.IncomingMessage) {
-  if (req.headers['x-admin-key'] !== ADMIN_KEY) throw new HttpError(401, 'admin key missing or wrong');
-}
-
 async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://x');
   const p = url.pathname;
   const m = req.method ?? 'GET';
   const send = (data: unknown, status = 200) => {
     res.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': '*',
-      'access-control-allow-headers': 'content-type,x-admin-key', 'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE' });
+      'access-control-allow-headers': 'content-type,x-admin-key,x-account-id', 'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE' });
     res.end(JSON.stringify(data));
   };
   if (m === 'OPTIONS') return send({});
   if (m === 'GET' && !p.startsWith('/api')) return serveStatic(p, res);
-  const acc = accountOf(req.headers['x-account-id']);
 
   try {
-    if (m === 'GET' && p === '/api/instruments') return send(INSTRUMENTS.map(({ vol, start, ...i }) => i));
-
-    if (m === 'GET' && p === '/api/candles') {
-      const tf = (url.searchParams.get('tf') ?? 'M1') as TfKey;
-      if (!(tf in TF)) throw new HttpError(400, 'invalid timeframe');
-      const symbol = url.searchParams.get('symbol') ?? '';
-      if (!BY_SYMBOL.has(symbol)) throw new HttpError(404, 'unknown symbol');
-      await candles.ensure(symbol, tf);
-      return send(candles.get(symbol, tf, Number(url.searchParams.get('limit') ?? 500)));
-    }
-
-    if (m === 'GET' && p === '/api/account') return send(engine.snapshot(acc));
-    if (m === 'GET' && p === '/api/groups') return send(pricing.config.groups.map((g) => ({ id: g.id, name: g.name })));
-    if (m === 'POST' && p === '/api/account/group') {
-      const b = await readBody(req);
-      if (!pricing.config.groups.some((g) => g.id === b.groupId)) throw new HttpError(400, 'unknown group');
-      acc.groupId = b.groupId;
-      return send(engine.snapshot(acc));
-    }
-    if (m === 'POST' && p === '/api/account/reset') {
-      acc.balance = 10000; acc.positions = []; acc.pending = []; acc.history = [];
-      return send(engine.snapshot(acc));
-    }
-
-    if (m === 'POST' && p === '/api/orders') {
-      const b = await readBody(req);
-      if (b.type === 'limit' || b.type === 'stop') {
-        engine.placePending(acc, b.symbol, b.side, b.type, Number(b.lots), Number(b.price), num(b.sl), num(b.tp));
-      } else {
-        engine.openMarket(acc, b.symbol, b.side, Number(b.lots), num(b.sl), num(b.tp));
-      }
-      return send(engine.snapshot(acc));
-    }
-    let mm = p.match(/^\/api\/positions\/(\d+)$/);
-    if (mm && m === 'DELETE') { engine.closePosition(acc, Number(mm[1])); return send(engine.snapshot(acc)); }
-    if (mm && m === 'PATCH') {
-      const b = await readBody(req);
-      engine.modifyPosition(acc, Number(mm[1]), num(b.sl), num(b.tp));
-      return send(engine.snapshot(acc));
-    }
-    mm = p.match(/^\/api\/pending\/(\d+)$/);
-    if (mm && m === 'DELETE') { engine.cancelPending(acc, Number(mm[1])); return send(engine.snapshot(acc)); }
-
-    // ── pricing administration ──
-    if (p.startsWith('/api/admin/')) {
-      isAdmin(req);
-      if (m === 'GET' && p === '/api/admin/pricing') return send(pricing.config);
-      if (m === 'PUT' && p === '/api/admin/pricing') {
-        const g = (await readBody(req)) as GroupConfig;
-        pricing.updateGroup(g);
-        return send(g);
-      }
-      if (m === 'POST' && p === '/api/admin/pricing/reset') { pricing.reset(); return send(pricing.config); }
-      if (m === 'POST' && p === '/api/admin/rollover') {
-        const n = engine.applyRollover(new Date(), (await readBody(req)).groupId);
-        return send({ positionsCharged: n, account: engine.snapshot(acc) });
-      }
-      // preview: raw vs client price and effective swap for a group
-      if (m === 'GET' && p === '/api/admin/preview') {
-        const inst = BY_SYMBOL.get(url.searchParams.get('symbol') ?? '');
-        if (!inst) throw new HttpError(400, 'unknown symbol');
-        const group = pricing.group(url.searchParams.get('group') ?? 'standard');
-        const raw = market.raw(inst.symbol);
-        if (!raw) throw new HttpError(503, 'price not available yet');
-        const rule = resolveSpreadRule(group, inst);
-        const q = applySpread(raw, inst, rule, sessionMultiplier(group, inst, new Date()));
-        return send({
-          raw: { bid: raw.bid, ask: raw.ask, spreadPips: Number(((raw.ask - raw.bid) / inst.pip).toFixed(2)) },
-          client: { ...q, spreadPips: Number(((q.ask - q.bid) / inst.pip).toFixed(2)) },
-          rule, swap: resolveSwap(group, inst), commissionPerLot: group.commissionPerLot[inst.cls],
-        });
-      }
-    }
-    throw new HttpError(404, 'not found');
+    const body = m === 'GET' || m === 'DELETE' ? undefined : await readBody(req);
+    send(await handleApi({ engine, pricing, market, candles }, {
+      method: m, path: p, query: url.searchParams, body,
+      account: accountOf(req.headers['x-account-id']),
+      isAdmin: req.headers['x-admin-key'] === ADMIN_KEY,
+    }));
   } catch (e) {
-    const err = e as Error;
-    send({ error: err.message }, e instanceof HttpError ? e.status : 400);
+    send({ error: (e as Error).message }, e instanceof HttpError ? e.status : 400);
   }
 }
 

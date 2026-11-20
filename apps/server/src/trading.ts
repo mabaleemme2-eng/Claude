@@ -1,9 +1,15 @@
 import { BY_SYMBOL, type Instrument } from './instruments.js';
-import type { Market } from './market.js';
 import {
   applySpread, resolveSpreadRule, resolveSwap, sessionMultiplier, swapAmountUsd,
-  type PricingStore, type Quote, type SpreadRule,
+  type PricingSource, type Quote, type SpreadRule,
 } from './pricing.js';
+
+/** What the trading engine needs from a price source (the server Market and the browser demo both fit). */
+export interface MarketData {
+  raw(symbol: string): { bid: number; ask: number; time: number } | undefined;
+  mid(symbol: string): number | undefined;
+  toUsd(ccy: string): number;
+}
 
 export type Side = 'buy' | 'sell';
 export interface Position {
@@ -32,7 +38,7 @@ const r2 = (v: number) => Math.round(v * 100) / 100;
 export class TradingEngine {
   accounts = new Map<string, Account>();
 
-  constructor(private market: Market, private pricing: PricingStore) {}
+  constructor(private market: MarketData, private pricing: PricingSource) {}
 
   createAccount(id: string, name: string, groupId = 'standard', balance = 10000): Account {
     const a: Account = { id, name, groupId, balance, positions: [], pending: [], history: [], spreadOverrides: {} };

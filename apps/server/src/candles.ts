@@ -1,5 +1,5 @@
 import { INSTRUMENTS, type Instrument } from './instruments.js';
-import { gauss } from './market.js';
+import { gauss } from './util.js';
 
 export const TF = { M1: 60, M5: 300, M15: 900, H1: 3600, H4: 14400, D1: 86400 } as const;
 export type TfKey = keyof typeof TF;
@@ -9,7 +9,7 @@ export type CandleLoader = (tf: TfKey) => Promise<Candle[]>;
 const M1_BARS = 20000;
 const MAX_BARS = 6000;
 
-function aggregate(m1: Candle[], sec: number): Candle[] {
+export function aggregate(m1: Candle[], sec: number): Candle[] {
   const out: Candle[] = [];
   for (const c of m1) {
     const t = Math.floor(c.time / sec) * sec;

@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import type { AssetClass, Instrument, SwapRule } from './instruments.js';
 
 /**
@@ -113,24 +111,22 @@ export function defaultConfig(): PricingConfig {
   };
 }
 
-const FILE = path.resolve(process.cwd(), 'data', 'pricing.json');
-
-export class PricingStore {
+/** The slice of the store that the trading engine needs. */
+export interface PricingSource {
   config: PricingConfig;
-  constructor() {
-    this.config = this.load();
+  group(id: string): GroupConfig;
+}
+
+/**
+ * In-memory pricing configuration. `persist` is called after every change
+ * (the server saves to a JSON file, the browser demo to localStorage).
+ */
+export class PricingStore implements PricingSource {
+  config: PricingConfig;
+  constructor(initial?: PricingConfig | null, private persist?: (c: PricingConfig) => void) {
+    this.config = initial ?? defaultConfig();
   }
-  private load(): PricingConfig {
-    try {
-      return JSON.parse(fs.readFileSync(FILE, 'utf8')) as PricingConfig;
-    } catch {
-      return defaultConfig();
-    }
-  }
-  save() {
-    fs.mkdirSync(path.dirname(FILE), { recursive: true });
-    fs.writeFileSync(FILE, JSON.stringify(this.config, null, 2));
-  }
+  save() { this.persist?.(this.config); }
   group(id: string): GroupConfig {
     return this.config.groups.find((g) => g.id === id) ?? this.config.groups[0];
   }

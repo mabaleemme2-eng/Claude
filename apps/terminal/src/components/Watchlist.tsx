@@ -41,7 +41,7 @@ export default function Watchlist({ instruments, selected, onSelect }: { instrum
               return (
                 <div key={i.symbol} className={`wl-row ${selected === i.symbol ? 'sel' : ''}`} onClick={() => onSelect(i.symbol)}>
                   <span className="sym" title={`${instName(i.symbol, i.name)} — ${t(`src.${i.source}` as Key)}`}>
-                    <i className={`src ${i.source === 'sim' ? 'sim' : 'live'}`} />{i.symbol}
+                    <i className={`src ${i.source === 'sim' || i.source === 'demo' ? 'sim' : 'live'}`} />{i.symbol}
                   </span>
                   <span className={color}>{tick ? tick.bid.toFixed(i.digits) : '—'}</span>
                   <span className={color}>{tick ? tick.ask.toFixed(i.digits) : '—'}</span>
