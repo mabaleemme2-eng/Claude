@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, setAccountFromServer, STANDALONE, type Instrument } from './apiHelpers';
+import { api, setAccountFromServer, LIVE, STANDALONE, type Instrument } from './apiHelpers';
 import { DialogHost } from './dialogs';
 import { useAccount, useConnected } from './feed';
 import { LANGS, groupName, locale, setLang, t, useLang } from './i18n';
@@ -32,7 +32,7 @@ export default function App() {
 
   return (
     <div className="app">
-      {STANDALONE && takenAt && <div className="demo-banner">{t('demoBanner', { date: new Date(takenAt).toLocaleString(locale()) })}</div>}
+      {STANDALONE && takenAt && <div className={LIVE ? 'demo-banner live' : 'demo-banner'}>{LIVE ? t('liveBanner') : t('demoBanner', { date: new Date(takenAt).toLocaleString(locale()) })}</div>}
       <header className="topbar">
         <div className="brand">◆ BrokerOS <span>Terminal</span></div>
         <div className="metrics">

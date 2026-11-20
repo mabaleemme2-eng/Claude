@@ -49,6 +49,19 @@ Every browser gets its own demo account (random id stored in the browser), so se
 npm test             # pricing engine tests
 ```
 
+## Online link with live prices (GitHub Pages, free, no server)
+
+`docs/` contains a ready static site: the full terminal running in the browser, with **live prices streamed from Binance, Kraken and Hyperliquid straight to each visitor's browser** (no key, no server). Accounts are demo accounts stored in the visitor's browser.
+
+To publish it (repository must be public, as it is now):
+1. On GitHub open the repository → **Settings → Pages**.
+2. *Source*: **Deploy from a branch**. *Branch*: `claude/trading-platform-broker-crm-woonte`, folder **/docs** → **Save**.
+3. After about a minute the site is at `https://<your-user>.github.io/Claude/`.
+
+Rebuild after changing the code or to refresh the recent history: `npm run snapshot` (needs the server running), then `npm run build:live`, then commit `docs/`.
+
+This is a demo/marketing build. A real broker needs the server version (accounts, CRM, real order handling): see *Try it* and the Render blueprint above.
+
 ## Browser-only demo (no server)
 
 A full version of the terminal that runs entirely in the browser: the real pricing/trading engine and the real REST handler (`apps/server/src/routes.ts`) execute inside the page. Prices are a **snapshot of the real market** (`apps/terminal/demo-data`, taken with `npm run snapshot` against a running server) **continued by a random-walk simulator**, so there are no live prices in this mode. Orders, margin, spreads, swaps, the pricing admin panel (no key needed) and the five languages all work.
@@ -87,7 +100,7 @@ All texts live in `apps/terminal/src/i18n.ts`. To add a language: add it to `LAN
 
 - `apps/server` — REST API + WebSocket, feeds, candles, pricing engine (`pricing.ts`), trading engine (`trading.ts`)
 - `apps/terminal` — React + Vite + lightweight-charts
-- `docs/PRICING.md` — how prices, spreads and swaps work
+- `guides/PRICING.md` — how prices, spreads and swaps work
 
 ## Important notes
 

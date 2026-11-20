@@ -86,3 +86,4 @@ td.days label { margin-right: 8px; white-space: nowrap; color: var(--mute); } td
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .demo-banner { background: #2b2410; color: #f0c85a; font-size: 12px; padding: 6px 12px; border-bottom: 1px solid #4a3d14; }
 .src.demo { background: #f0a30a; }
+.demo-banner.live { background: #0f2a22; color: #5fd4a6; border-bottom-color: #1d4a3b; }

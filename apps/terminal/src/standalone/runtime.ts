@@ -9,6 +9,10 @@ import { TradingEngine, type MarketData } from '../../../server/src/trading';
 import { CandleStore, aggregate, type Candle, type TfKey } from '../../../server/src/candles';
 import { handleApi, HttpError } from '../../../server/src/routes';
 import { gauss } from '../../../server/src/util';
+import { startLive, type LiveSource } from './live';
+
+/** Build flag: stream live prices from public market data (needs network access from the page). */
+const LIVE = !!import.meta.env.VITE_LIVE;
 
 type Emit = (msg: unknown) => void;
 
@@ -62,7 +66,7 @@ async function boot(): Promise<Ctx> {
   BY_SYMBOL.clear();
   registerInstruments(list.filter((i) => snap.prices[i.symbol]).map((i) => {
     const [bid, ask] = snap.prices[i.symbol];
-    return { ...i, source: 'demo' as unknown as Instrument['source'], start: (bid + ask) / 2, vol: VOL[i.cls] ?? 3e-5 };
+    return { ...i, source: (LIVE ? i.source : 'demo') as unknown as Instrument['source'], start: (bid + ask) / 2, vol: VOL[i.cls] ?? 3e-5 };
   }));
 
   const market = new DemoMarket();
@@ -123,25 +127,64 @@ export async function startDemo(emit: Emit) {
 
   const mids = new Map(INSTRUMENTS.map((i) => [i.symbol, i.start]));
   let lastPush = 0;
+  let pending = false;
+  const pushAccount = (force = false) => {
+    const now = Date.now();
+    if (force || now - lastPush > 400) { lastPush = now; emit({ type: 'account', data: engine.snapshot(acc) }); }
+  };
+
+  /** One new raw price for an instrument (from the simulator or a live feed). */
+  const apply = (symbol: string, bid: number, ask: number, now: number) => {
+    const inst = BY_SYMBOL.get(symbol);
+    if (!inst || !(bid > 0) || !(ask >= bid)) return false;
+    // illiquid forex quote (absurd spread): ignore it rather than show a false price
+    if (inst.cls === 'forex' && (ask - bid) / bid > 0.003) return false;
+    const r = (v: number) => Number(v.toFixed(inst.digits));
+    market.last.set(symbol, { bid: r(bid), ask: r(ask), time: now });
+    const ref = engine.quote(acc, symbol, new Date(now));
+    if (ref) candles.update(symbol, now, ref.bid);
+    const changed = engine.onTick(symbol);
+    quoteTick(symbol, now);
+    if (changed) pushAccount(true);
+    return true;
+  };
+
+  // live prices: at most one update per symbol every 150 ms (same as the server)
+  const liveSeen = new Set<LiveSource>();
+  const latest = new Map<string, { bid: number; ask: number }>();
+  const throttled = new Set<string>();
+  if (LIVE) {
+    startLive((t, source) => {
+      liveSeen.add(source);
+      latest.set(t.symbol, { bid: t.bid, ask: t.ask });
+      if (throttled.has(t.symbol)) return;
+      throttled.add(t.symbol);
+      setTimeout(() => { throttled.delete(t.symbol); const p = latest.get(t.symbol)!; apply(t.symbol, p.bid, p.ask, Date.now()); pending = true; }, 150);
+    });
+  }
+
+  // simulation: everything in the plain demo; in live mode only what has no live source, or a source that never answered
+  const failed = new Set<string>();
+  if (LIVE) {
+    setTimeout(() => {
+      for (const s of ['binance', 'hyperliquid', 'kraken', 'cross'] as LiveSource[]) if (!liveSeen.has(s)) failed.add(s);
+      if (failed.size) console.warn('[live] no data from:', [...failed].join(', '), '— falling back to simulation');
+    }, 15000);
+  }
+  const simulated = (i: Instrument) => !LIVE || (i.source as string) === 'sim' || failed.has(i.source as string);
+
   setInterval(() => {
     const now = Date.now();
-    let changed = false;
     for (const i of INSTRUMENTS) {
-      if (Math.random() > 0.7) continue;
+      if (!simulated(i) || Math.random() > 0.7) continue;
       let mid = mids.get(i.symbol)!;
       mid *= 1 + gauss() * i.vol + ((i.start - mid) / i.start) * 0.0005;
       mids.set(i.symbol, mid);
       const half = (spreads.get(i.symbol)! * (0.85 + Math.random() * 0.4)) / 2;
       const d = i.digits;
-      const bid = Math.floor((mid - half) * 10 ** d) / 10 ** d;
-      const ask = Math.ceil((mid + half) * 10 ** d) / 10 ** d;
-      market.last.set(i.symbol, { bid, ask, time: now });
-      const ref = engine.quote(acc, i.symbol, new Date(now));
-      if (ref) candles.update(i.symbol, now, ref.bid);
-      changed = engine.onTick(i.symbol) || changed;
-      quoteTick(i.symbol, now);
+      apply(i.symbol, Math.floor((mid - half) * 10 ** d) / 10 ** d, Math.ceil((mid + half) * 10 ** d) / 10 ** d, now);
     }
-    if (changed || now - lastPush > 400) { lastPush = now; emit({ type: 'account', data: engine.snapshot(acc) }); }
+    pushAccount(pending);
+    pending = false;
   }, 250);
-
 }

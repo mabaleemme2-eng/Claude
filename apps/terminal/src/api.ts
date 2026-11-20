@@ -47,6 +47,8 @@ export const adminKey = () => { try { return localStorage.getItem(ADMIN_KEY_STOR
 
 /** Browser-only demo build (no server): the engine runs inside the page. */
 export const STANDALONE = !!import.meta.env.VITE_STANDALONE;
+/** Browser-only build that also streams live prices from public market data. */
+export const LIVE = !!import.meta.env.VITE_LIVE;
 
 export async function api<T>(path: string, init?: { method?: string; body?: unknown; admin?: boolean }): Promise<T> {
   if (import.meta.env.VITE_STANDALONE) {

@@ -13,7 +13,8 @@
     "start": "npm run build && npm run start -w apps/server",
     "serve": "npm run start -w apps/server",
     "build:demo": "npm run build:demo -w apps/terminal && node scripts/build-demo.mjs",
-    "snapshot": "node scripts/snapshot.mjs"
+    "snapshot": "node scripts/snapshot.mjs",
+    "build:live": "npm run build:live -w apps/terminal && node scripts/build-live.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
